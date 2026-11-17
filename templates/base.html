@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}UNCP{% endblock %}</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background: #f4f6f9; color: #333; }
+  nav { background: #1a3d7c; padding: 12px 24px; display: flex; gap: 20px; flex-wrap: wrap; align-items: center; }
+  nav a { color: #fff; text-decoration: none; font-weight: 500; padding: 6px 10px; border-radius: 6px; }
+  nav a:hover { background: rgba(255,255,255,.15); }
+  .container { max-width: 1200px; margin: 24px auto; padding: 0 16px; }
+  .card { background: #fff; border-radius: 10px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 6px rgba(0,0,0,.08); }
+  h1, h2, h3 { color: #1a3d7c; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
+  th { background: #f0f4fa; color: #1a3d7c; }
+  .btn { display: inline-block; padding: 8px 16px; border-radius: 6px; text-decoration: none;
+         border: none; cursor: pointer; font-size: 14px; font-weight: 500; }
+  .btn-primary { background: #1a3d7c; color: #fff; }
+  .btn-danger  { background: #c0392b; color: #fff; }
+  .btn-success { background: #27ae60; color: #fff; }
+  .btn-secondary { background: #7f8c8d; color: #fff; }
+  .form-group { margin-bottom: 12px; }
+  .form-group label { display: block; margin-bottom: 4px; font-weight: 500; }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px;
+    font-family: inherit; font-size: 14px;
+  }
+  .flash { padding: 12px; border-radius: 6px; margin-bottom: 12px; }
+  .flash.success { background: #d4edda; color: #155724; }
+  .flash.danger  { background: #f8d7da; color: #721c24; }
+  .flash.warning { background: #fff3cd; color: #856404; }
+  .flash.info    { background: #d1ecf1; color: #0c5460; }
+</style>
+</head>
+<body>
+<nav>
+  <a href="{{ url_for('index') }}">🏠 Inicio</a>
+  <a href="{{ url_for('lista_docentes') }}">👨‍🏫 Docentes</a>
+  <a href="{{ url_for('lista_proyectos') }}">📄 Proyectos</a>
+  <a href="{{ url_for('cronograma') }}">📅 Cronograma</a>
+  <a href="{{ url_for('lista_jurados') }}">⚖️ Jurados</a>
+  <a href="{{ url_for('lista_proyectos') }}">📱 Calificar</a>
+  <a href="{{ url_for('resultados') }}">📊 Resultados</a>
+  <a href="{{ url_for('dashboard_areas') }}">📊 Dashboard áreas</a>
+  <a href="{{ url_for('simulador') }}">🧪 Simulador</a>
+</nav>
+<div class="container">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+      <div class="flash {{ cat }}">{{ msg }}</div>
+    {% endfor %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</div>
+</body>
+</html>

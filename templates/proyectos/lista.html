@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Proyectos{% endblock %}
+{% block content %}
+<div class="card">
+  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+    <h2 style="margin:0;">Proyectos registrados</h2>
+    <a href="{{ url_for('form_proyecto') }}" class="btn btn-primary">+ Nuevo proyecto</a>
+  </div>
+
+  <!-- Botones de filtro rápido -->
+  <div style="margin-top:15px; display:flex; gap:10px;">
+    <a href="{{ url_for('lista_proyectos') }}" class="btn btn-secondary" style="background:#1a3d7c; color:#fff;">Todos</a>
+    <a href="{{ url_for('lista_proyectos', dia=1) }}" class="btn btn-secondary">Día 1</a>
+    <a href="{{ url_for('lista_proyectos', dia=2) }}" class="btn btn-secondary">Día 2</a>
+  </div>
+
+  <table style="margin-top:16px;">
+    <thead>
+      <tr>
+        <th>Área</th>
+        <th>Proyecto</th>
+        <th>Docente</th>
+        <th>Programa</th>
+        <th>Día / Hora</th>
+        <th style="text-align:right;">Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for p in proyectos %}
+      <tr>
+        <td>{{ p.area or '-' }}</td>
+        <td>
+          <strong>{{ p.nombre_bp }}</strong><br>
+          <small style="color:#666;">{{ p.asignatura or '' }} - Ciclo {{ p.ciclo or '-' }}</small>
+        </td>
+        <td>{{ p.autor.nombre if p.autor else '-' }}</td>
+        <td>{{ p.programa_estudio or '-' }}</td>
+        <td>
+          {% if p.dia %}
+            <span class="badge" style="background:#1a3d7c; color:#fff; padding:2px 6px; border-radius:4px; font-size:12px;">Día {{ p.dia }}</span>
+            <span style="margin-left:4px;">{{ p.hora or '--:--' }}</span>
+          {% else %}
+            <span style="color:#999;">Sin asignar</span>
+          {% endif %}
+        </td>
+        <td style="text-align:right; white-space:nowrap;">
+          <a href="{{ url_for('calificar', proyecto_id=p.id) }}" class="btn btn-success" style="font-weight:bold;">⭐ Calificar</a>
+          <a href="{{ url_for('detalle_proyecto', id=p.id) }}" class="btn btn-secondary">Ver</a>
+          <a href="{{ url_for('form_proyecto', id=p.id) }}" class="btn btn-secondary">Editar</a>
+          <form method="POST" action="{{ url_for('eliminar_proyecto', id=p.id) }}" style="display:inline"
+                onsubmit="return confirm('¿Estás seguro de eliminar este proyecto?\n\n{{ p.nombre_bp }}');">
+            <button class="btn btn-danger">Eliminar</button>
+          </form>
+        </td>
+      </tr>
+    {% else %}
+      <tr>
+        <td colspan="6" style="text-align:center; padding:20px; color:#666;">
+          No hay proyectos registrados en este filtro. <br>
+          <a href="{{ url_for('form_proyecto') }}" class="btn btn-primary" style="margin-top:10px;">Registrar el primero</a>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

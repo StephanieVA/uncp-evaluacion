@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Jurados{% endblock %}
+{% block content %}
+<div class="card">
+  <div style="display:flex; justify-content:space-between; align-items:center;">
+    <h2>Jurados</h2>
+    <a href="{{ url_for('form_jurado') }}" class="btn btn-primary">+ Nuevo jurado</a>
+  </div>
+  <table>
+    <thead><tr><th>Nombre</th><th>DNI</th><th>Día asignado</th><th></th></tr></thead>
+    <tbody>
+    {% for j in jurados %}
+      <tr>
+        <td>{{ j.nombre }}</td><td>{{ j.dni or '-' }}</td>
+        <td>Día {{ j.dia_asignado }}</td>
+        <td style="text-align:right">
+          <a href="{{ url_for('form_jurado', id=j.id) }}" class="btn btn-secondary">Editar</a>
+          <form method="POST" action="{{ url_for('eliminar_jurado', id=j.id) }}" style="display:inline"
+                onsubmit="return confirm('¿Eliminar jurado?')">
+            <button class="btn btn-danger">Eliminar</button>
+          </form>
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="4" style="text-align:center">Sin jurados registrados.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

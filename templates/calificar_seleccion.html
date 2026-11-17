@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Calificar{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>Selecciona el proyecto a calificar</h2>
+  <h3>Día 1</h3>
+  {% for p in proyectos %}
+    <p><a href="{{ url_for('calificar', proyecto_id=p.id) }}" class="btn btn-primary">
+      {{ p.hora or '--:--' }} · {{ p.nombre_bp }} ({{ p.autor.nombre }})
+    </a></p>
+  {% else %}
+    <p>No hay proyectos en el Día 1.</p>
+  {% endfor %}
+  <h3>Día 2</h3>
+  {% for p in proyectos_dia2 %}
+    <p><a href="{{ url_for('calificar', proyecto_id=p.id) }}" class="btn btn-primary">
+      {{ p.hora or '--:--' }} · {{ p.nombre_bp }} ({{ p.autor.nombre }})
+    </a></p>
+  {% else %}
+    <p>No hay proyectos en el Día 2.</p>
+  {% endfor %}
+</div>
+{% endblock %}

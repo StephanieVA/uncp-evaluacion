@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Calificar: {{ proyecto.nombre_bp }}{% endblock %}
+{% block content %}
+<style>
+    .tabla-rubrica { width: 100%; border-collapse: collapse; background: #fff; font-size: 13px; }
+    .tabla-rubrica th, .tabla-rubrica td { border: 1px solid #ccc; padding: 10px; vertical-align: top; }
+    .tabla-rubrica th { background: #1a3d7c; color: #fff; text-align: center; }
+    .tabla-rubrica td.criterio-col { background: #f0f4fa; font-weight: bold; width: 20%; }
+    .tabla-rubrica td.opcion-col { text-align: center; cursor: pointer; width: 20%; }
+    .tabla-rubrica td.opcion-col:hover { background: #f9f9f9; }
+    
+    /* Estilo para los radio buttons ocultos */
+    .opcion-radio { display: none; }
+    
+    /* Efecto cuando se selecciona una opción */
+    .opcion-radio:checked + .contenido-opcion {
+        background: #d4edda;
+        border: 2px solid #27ae60;
+        border-radius: 4px;
+        padding: 4px;
+        display: block;
+    }
+    .contenido-opcion { display: block; padding: 6px; border: 2px solid transparent; transition: all 0.2s; }
+    
+    .total-box { background: #1a3d7c; color: #fff; padding: 20px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
+    .total-box span { font-size: 32px; font-weight: bold; }
+</style>
+
+<div class="card">
+  <h2>{{ proyecto.nombre_bp }}</h2>
+  <p><strong>Docente:</strong> {{ proyecto.autor.nombre }}</p>
+  <p><strong>Área:</strong> {{ proyecto.area }} · <strong>Día:</strong> {{ proyecto.dia }}</p>
+</div>
+
+{% if calificados %}
+<div class="card" style="background:#e8f5e9; border-left: 4px solid #27ae60;">
+  <h3 style="margin-top:0;">✅ Jurados que ya calificaron ({{ calificados|length }}/4)</h3>
+  {% for c in calificados %}
+    <div style="border-bottom:1px dashed #ccc; padding:8px 0;">
+      <strong>{{ c.jurado.nombre }}</strong> — Nota: <strong style="color:#27ae60">{{ c.nota_final }} / 28 pts</strong>
+      {% if c.comentario %}<br><small style="color:#666;">"{{ c.comentario }}"</small>{% endif %}
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<form method="POST">
+  <div class="card" style="overflow-x: auto;">
+    <div style="margin-bottom: 20px;">
+      <label><strong>Seleccione su nombre (Jurado):</strong></label>
+      <select name="jurado_id" required style="width:100%; padding:10px; font-size:16px; margin-top:5px; border-radius:6px; border:1px solid #ccc;">
+        <option value="">-- ¿Quién está calificando? --</option>
+        {% for j in jurados %}
+          {% if j.id not in ids_calificados %}
+            <option value="{{ j.id }}">{{ j.nombre }}</option>
+          {% endif %}
+        {% endfor %}
+      </select>
+    </div>
+
+    <table class="tabla-rubrica">
+      <thead>
+        <tr>
+          <th>N°</th>
+          <th>Criterio</th>
+          <th>Excelente (4)</th>
+          <th>Bueno (3)</th>
+          <th>Regular (2)</th>
+          <th>Deficiente (1)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for criterio in criterios %}
+        <tr>
+          <td style="text-align:center; font-weight:bold;">{{ loop.index }}</td>
+          <td class="criterio-col">
+            {{ criterio.nombre }}
+            <br><small style="font-weight:normal; color:#555; font-size:11px;">{{ criterio.descripcion }}</small>
+          </td>
+          
+          {% for nivel in criterio.niveles %}
+          <td class="opcion-col" onclick="document.getElementById('radio_{{ criterio.id }}_{{ nivel.id }}').click();">
+            <input type="radio" name="criterio_{{ criterio.id }}" id="radio_{{ criterio.id }}_{{ nivel.id }}"
+                   value="{{ nivel.id }}" class="opcion-radio" data-puntaje="{{ nivel.puntaje }}" required>
+            <label for="radio_{{ criterio.id }}_{{ nivel.id }}" class="contenido-opcion" style="cursor:pointer; display:block;">
+              {{ nivel.descripcion }}
+            </label>
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="form-group" style="margin-top: 20px;">
+      <label>Comentario u observación (Opcional)</label>
+      <textarea name="comentario" rows="2" style="width:100%; border:1px solid #ccc; border-radius:6px; padding:8px;" placeholder="Escriba alguna observación sobre la exposición..."></textarea>
+    </div>
+  </div>
+
+  <div class="total-box">
+    <div>
+      <div style="font-size:14px; opacity:0.8;">Puntaje Total</div>
+      <span id="notaPreview">0</span> <span style="font-size:16px;">/ 28 pts</span>
+    </div>
+    <button type="submit" class="btn btn-primary" style="padding:14px 28px; font-size:16px; background:#27ae60;">Guardar Calificación</button>
+  </div>
+</form>
+
+<script>
+// Cálculo en vivo del puntaje total
+const radios = document.querySelectorAll('input[type=radio]');
+const preview = document.getElementById('notaPreview');
+
+function recalcular() {
+    let total = 0;
+    // Obtenemos solo los que están seleccionados
+    const seleccionados = document.querySelectorAll('input[type=radio]:checked');
+    seleccionados.forEach(r => {
+        total += parseFloat(r.dataset.puntaje || 0);
+    });
+    preview.textContent = total;
+}
+
+radios.forEach(r => r.addEventListener('change', recalcular));
+
+// Resaltar la celda clickeada manualmente (para móviles/tablets)
+document.querySelectorAll('.opcion-col').forEach(td => {
+    td.addEventListener('click', () => {
+        const radio = td.querySelector('input[type=radio]');
+        if(radio) {
+            radio.checked = true;
+            recalcular();
+        }
+    });
+});
+</script>
+{% endblock %}

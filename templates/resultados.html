@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Resultados{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>Resultados consolidados</h2>
+  <table>
+    <thead>
+      <tr><th>Proyecto</th><th>Docente</th><th>Área</th><th>Jurados</th><th>Promedio</th></tr>
+    </thead>
+    <tbody>
+    {% for row in data %}
+      <tr>
+        <td>{{ row.proyecto.nombre_bp }}</td>
+        <td>{{ row.proyecto.autor.nombre }}</td>
+        <td>{{ row.proyecto.area }}</td>
+        <td>{{ row.calificaciones|length }}/4 {% if row.completo %}✅{% endif %}</td>
+        <td><strong>{{ row.promedio if row.promedio is not none else '-' }}</strong></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

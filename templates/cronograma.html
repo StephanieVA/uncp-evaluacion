@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Cronograma{% endblock %}
+{% block content %}
+<div class="card">
+  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+    <div>
+      <h2 style="margin:0;">Cronograma de Exposiciones</h2>
+      <p style="margin:4px 0 0; color:#666;">{{ total }} proyectos en total, ordenados por área y alfabéticamente.</p>
+    </div>
+    <div>
+      <a href="{{ url_for('cronograma_excel') }}" class="btn btn-success">📥 Descargar Excel</a>
+    </div>
+  </div>
+</div>
+
+<!-- Generación automática -->
+<div class="card" style="background:#f0f4fa;">
+  <h3 style="margin-top:0;">⚡ Generar cronograma automático</h3>
+  <form method="POST" action="{{ url_for('cronograma_auto') }}" style="display:flex; gap:12px; flex-wrap:wrap; align-items:end;">
+    <div class="form-group" style="margin:0;">
+      <label>Duración (min)</label>
+      <input type="number" name="duracion" value="15" style="width:90px;">
+    </div>
+    <div class="form-group" style="margin:0;">
+      <label>Receso (min)</label>
+      <input type="number" name="receso" value="10" style="width:90px;">
+    </div>
+    <div class="form-group" style="margin:0;">
+      <label>Almuerzo (min)</label>
+      <input type="number" name="almuerzo" value="60" style="width:90px;">
+    </div>
+    <div class="form-group" style="margin:0;">
+      <label>Hora inicio</label>
+      <input type="time" name="hora_inicio" value="08:00">
+    </div>
+    <div class="form-group" style="margin:0;">
+      <label>Hora fin</label>
+      <input type="time" name="hora_fin" value="18:00">
+    </div>
+    <button class="btn btn-primary">Generar</button>
+  </form>
+</div>
+
+<!-- Tabla editable por área -->
+<form method="POST" action="{{ url_for('asignar_cronograma') }}">
+  {% for area, proyectos in agrupados.items() %}
+  <div class="card">
+    <h3 style="margin-top:0; border-bottom:2px solid #1a3d7c; padding-bottom:6px;">
+      {{ area }} <span style="font-weight:normal; color:#666; font-size:14px;">({{ proyectos|length }} proyectos)</span>
+    </h3>
+    <table>
+      <thead>
+        <tr>
+          <th>N°</th>
+          <th>Docente</th>
+          <th>Nombre del proyecto</th>
+          <th>Día</th>
+          <th>Hora</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for p in proyectos %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>{{ p.autor.nombre if p.autor else '-' }}</td>
+          <td>{{ p.nombre_bp }}</td>
+          <td>
+            <select name="dia_{{ p.id }}" style="padding:4px; border-radius:4px;">
+              <option value="1" {{ 'selected' if p.dia==1 }}>Día 1</option>
+              <option value="2" {{ 'selected' if p.dia==2 }}>Día 2</option>
+            </select>
+          </td>
+          <td>
+            <input name="hora_{{ p.id }}" value="{{ p.hora or '' }}" placeholder="09:00"
+                   style="width:80px; padding:4px; border:1px solid #ccc; border-radius:4px;">
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="card" style="text-align:center; color:#666;">
+    <p>No hay proyectos registrados aún. Crea proyectos primero.</p>
+  </div>
+  {% endfor %}
+
+  {% if agrupados %}
+  <div style="position:sticky; bottom:20px; text-align:center; padding:12px;">
+    <button class="btn btn-primary" style="padding:12px 32px; font-size:16px; box-shadow:0 4px 12px rgba(0,0,0,.2);">
+      💾 Guardar todos los cambios
+    </button>
+  </div>
+  {% endif %}
+</form>
+{% endblock %}

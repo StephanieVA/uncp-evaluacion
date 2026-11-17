@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Dashboard por áreas{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>Resumen por Área y Programa de Estudios</h2>
+  <p><strong>Total proyectos:</strong> {{ total_proyectos }} · <strong>Total docentes:</strong> {{ total_docentes }}</p>
+</div>
+
+<div class="card">
+  <h3>Proyectos por Área</h3>
+  <table>
+    <thead><tr><th>Área</th><th>N° Proyectos</th><th>% del total</th></tr></thead>
+    <tbody>
+    {% for area, cnt in por_area %}
+      <tr>
+        <td>{{ area or 'Sin área' }}</td>
+        <td>{{ cnt }}</td>
+        <td>{{ '%.1f'|format(cnt / total_proyectos * 100) if total_proyectos else 0 }}%</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h3>Proyectos por Programa de Estudios</h3>
+  <table>
+    <thead><tr><th>Área</th><th>Facultad</th><th>Programa</th><th>N° Proyectos</th></tr></thead>
+    <tbody>
+    {% for area, facultad, programa, cnt in por_programa %}
+      <tr>
+        <td>{{ area or '-' }}</td>
+        <td>{{ facultad or '-' }}</td>
+        <td>{{ programa or '-' }}</td>
+        <td><strong>{{ cnt }}</strong></td>
+      </tr>
+    {% else %}
+      <tr><td colspan="4" style="text-align:center">Sin proyectos registrados.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h3>Docentes por Programa de Estudios</h3>
+  <table>
+    <thead><tr><th>Área</th><th>Programa</th><th>N° Docentes</th></tr></thead>
+    <tbody>
+    {% for area, programa, cnt in docentes_por_programa %}
+      <tr>
+        <td>{{ area or '-' }}</td>
+        <td>{{ programa or 'Sin asignar' }}</td>
+        <td>{{ cnt }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="3" style="text-align:center">Sin docentes registrados.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

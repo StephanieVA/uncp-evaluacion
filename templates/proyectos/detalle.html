@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}{{ proyecto.nombre_bp }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>{{ proyecto.nombre_bp }}</h2>
+  <p><strong>Docente:</strong> {{ proyecto.autor.nombre }} ({{ proyecto.autor.facultad }})</p>
+  <p><strong>Área:</strong> {{ proyecto.area }}</p>
+  {% if proyecto.contexto %}<p><strong>Contexto:</strong> {{ proyecto.contexto }}</p>{% endif %}
+  {% if proyecto.proposito %}<p><strong>Propósito:</strong> {{ proyecto.proposito }}</p>{% endif %}
+  {% if proyecto.descripcion %}<p><strong>Descripción:</strong> {{ proyecto.descripcion }}</p>{% endif %}
+  {% if proyecto.link %}<p><strong>Link:</strong> <a href="{{ proyecto.link }}" target="_blank">{{ proyecto.link }}</a></p>{% endif %}
+  {% if proyecto.recursos %}<p><strong>Recursos:</strong> {{ proyecto.recursos }}</p>{% endif %}
+  {% if proyecto.resultados %}<p><strong>Resultados:</strong> {{ proyecto.resultados }}</p>{% endif %}
+  {% if proyecto.evidencias %}<p><strong>Evidencias:</strong> {{ proyecto.evidencias }}</p>{% endif %}
+</div>
+{% endblock %}

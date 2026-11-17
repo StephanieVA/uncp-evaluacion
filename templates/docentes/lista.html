@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Docentes{% endblock %}
+{% block content %}
+<div class="card">
+  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+    <h2 style="margin:0;">Docentes registrados</h2>
+    <div>
+      <a href="{{ url_for('importar_docentes') }}" class="btn btn-success">📥 Importar Excel</a>
+      <a href="{{ url_for('form_docente') }}" class="btn btn-primary">+ Nuevo docente</a>
+    </div>
+  </div>
+
+  <table style="margin-top:16px;">
+    <thead>
+      <tr>
+        <th>DNI</th>
+        <th>Nombre</th>
+        <th>Condición</th>
+        <th>Categoría</th>
+        <th>Facultad</th>
+        <th>Área</th>
+        <th>Correo</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for d in docentes %}
+      <tr>
+        <td>{{ d.dni or '-' }}</td>
+        <td>{{ d.nombre }}</td>
+        <td>{{ d.condicion or '-' }}</td>
+        <td>{{ d.categoria or '-' }}</td>
+        <td>{{ d.facultad or '-' }}</td>
+        <td>{{ d.area or '-' }}
+          {% if d.area and area_desde_facultad(d.facultad) != d.area %}
+            <span title="Área ajustada manualmente" style="color:#e67e22;">⚠️</span>
+          {% endif %}
+        </td>
+        <td>{{ d.correo or '-' }}</td>
+        <td style="text-align:right; white-space:nowrap;">
+          <a href="{{ url_for('form_docente', id=d.id) }}" class="btn btn-secondary">Editar</a>
+          <form method="POST" action="{{ url_for('eliminar_docente', id=d.id) }}"
+                style="display:inline" onsubmit="return confirm('¿Eliminar docente y todos sus proyectos?')">
+            <button class="btn btn-danger">Eliminar</button>
+          </form>
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="8" style="text-align:center">Sin docentes registrados.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Importar docentes{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>Importar docentes desde Excel</h2>
+  <p>El archivo debe tener <strong>obligatoriamente</strong> estas columnas:</p>
+  <ul>
+    <li><code>DNI</code></li>
+    <li><code>Condición</code> (DN, DC)</li>
+    <li><code>Categoria</code></li>
+    <li><code>Facultad</code> (código: MH, EN, AR, IC, MI, IS, IE, ME, MT, IQ, AD, CO, EC, ET, AN, SO, TS, CC, ED, AG, FO, IA, ZO, CA)</li>
+    <li><code>Apellidos y Nombres</code> (formato: <code>APELLIDO1 - APELLIDO2 - NOMBRES</code>)</li>
+  </ul>
+  <p>El <strong>Área</strong> se asigna automáticamente según el código de facultad.</p>
+
+  <form method="POST" enctype="multipart/form-data">
+    <div class="form-group">
+      <label>Archivo Excel (.xlsx)</label>
+      <input type="file" name="archivo" accept=".xlsx,.xls" required>
+    </div>
+    <button class="btn btn-primary">Importar</button>
+    <a href="{{ url_for('lista_docentes') }}" class="btn btn-secondary">Cancelar</a>
+  </form>
+
+  <hr style="margin:24px 0;">
+  <h3>Códigos válidos y su área</h3>
+  <table>
+    <thead><tr><th>Código</th><th>Facultad</th><th>Área</th></tr></thead>
+    <tbody>
+      <tr><td>MH</td><td>ÁREA I CIENCIAS DE LA SALUD</td><td>ÁREA I</td></tr>
+      <tr><td>EN</td><td>ÁREA I CIENCIAS DE LA SALUD</td><td>ÁREA I</td></tr>
+      <tr><td>AR, IC, MI, IS, IE, ME, MT, IQ</td><td>ÁREA II ARQUITECTURA E INGENIERÍAS</td><td>ÁREA II</td></tr>
+      <tr><td>AD, CO, EC, ET</td><td>ÁREA III CIENCIAS ADMINISTRATIVAS CONTABLES Y ECONÓMICAS</td><td>ÁREA III</td></tr>
+      <tr><td>AN, SO, TS, CC, ED</td><td>ÁREA IV CIENCIAS SOCIALES Y EDUCACIÓN</td><td>ÁREA IV</td></tr>
+      <tr><td>AG, FO, IA, ZO, CA</td><td>ÁREA V CIENCIAS AGRARIAS</td><td>ÁREA V</td></tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}

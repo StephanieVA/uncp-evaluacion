@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Editar' if proyecto else 'Nuevo' }} Proyecto{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>{{ 'Editar' if proyecto else 'Nuevo' }} Proyecto</h2>
+
+  <form method="POST" id="formProyecto">
+    <h3>I. Información general</h3>
+    
+    <div class="form-group">
+      <label>Nombre de la buena práctica *</label>
+      <input name="nombre_bp" value="{{ proyecto.nombre_bp if proyecto else '' }}" required>
+    </div>
+
+    <div class="form-group">
+      <label>Docente autor *</label>
+      <select name="docente_id" id="selDocente" required>
+        <option value="">-- Seleccione un docente --</option>
+        {% for d in docentes %}
+          <option value="{{ d.id }}" {{ 'selected' if proyecto and proyecto.docente_id==d.id }}>
+            {{ d.nombre }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+      <div class="form-group">
+        <label>Área (Auto)</label>
+        <input type="text" id="txtArea" readonly style="background:#f0f0f0;">
+      </div>
+      <div class="form-group">
+        <label>Facultad (Auto)</label>
+        <input type="text" id="txtFacultad" readonly style="background:#f0f0f0;">
+      </div>
+      <div class="form-group">
+        <label>Condición (Auto)</label>
+        <input type="text" id="txtCondicion" readonly style="background:#f0f0f0;">
+      </div>
+      <div class="form-group">
+        <label>Correo institucional *</label>
+        <input type="email" name="correo_institucional" id="txtCorreo" required
+               value="{{ proyecto.correo_institucional if proyecto else '' }}">
+        <small style="color:#666;">Si lo cambias, se actualizará en el registro del docente.</small>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Programa de estudios *</label>
+      <select name="programa_estudio" id="selPrograma" required>
+        <option value="">-- Seleccione docente primero --</option>
+      </select>
+    </div>
+
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+      <div class="form-group">
+        <label>Asignatura(s) *</label>
+        <input name="asignatura" value="{{ proyecto.asignatura if proyecto else '' }}" required>
+      </div>
+      <div class="form-group">
+        <label>Ciclo(s) *</label>
+        <input name="ciclo" value="{{ proyecto.ciclo if proyecto else '' }}" required>
+      </div>
+    </div>
+
+    <h3>II. Descripción de la práctica</h3>
+    
+    <div class="form-group" style="background:#f0f4fa; padding:16px; border-radius:8px; border:1px solid #cce0ff;">
+      <label style="font-size:16px; color:#1a3d7c; margin-bottom:10px; display:block;">¿Cómo deseas registrar la descripción? *</label>
+      
+      <label style="display:block; margin-bottom:8px; cursor:pointer;">
+        <input type="radio" name="opcion_desc" value="1" class="opcion-desc" required> 
+        Opción 1: Rellenar todos los campos de la ficha
+      </label>
+      <label style="display:block; margin-bottom:8px; cursor:pointer;">
+        <input type="radio" name="opcion_desc" value="2" class="opcion-desc" required> 
+        Opción 2: Solo subir un Link (Ficha escaneada / Drive)
+      </label>
+      <label style="display:block; margin-bottom:8px; cursor:pointer;">
+        <input type="radio" name="opcion_desc" value="3" class="opcion-desc" required> 
+        Opción 3: Rellenar todos los campos Y adjuntar el Link
+      </label>
+    </div>
+
+    <!-- BLOQUE 1: CAMPOS DE LA FICHA -->
+    <div id="bloqueCampos" style="display:none; background:#fafafa; padding:16px; border-radius:8px; margin-bottom:16px; border:1px solid #eee;">
+      <div class="form-group">
+        <label>Contexto</label>
+        <textarea name="contexto" rows="3">{{ proyecto.contexto if proyecto else '' }}</textarea>
+      </div>
+      <div class="form-group">
+        <label>Propósito</label>
+        <textarea name="proposito" rows="3">{{ proyecto.proposito if proyecto else '' }}</textarea>
+      </div>
+      <div class="form-group">
+        <label>Descripción de la práctica</label>
+        <textarea name="descripcion" rows="5">{{ proyecto.descripcion if proyecto else '' }}</textarea>
+      </div>
+      <div class="form-group">
+        <label>Recursos</label>
+        <textarea name="recursos" rows="2">{{ proyecto.recursos if proyecto else '' }}</textarea>
+      </div>
+      <div class="form-group">
+        <label>Resultados</label>
+        <textarea name="resultados" rows="2">{{ proyecto.resultados if proyecto else '' }}</textarea>
+      </div>
+      <div class="form-group">
+        <label>Evidencias / testimonios</label>
+        <textarea name="evidencias" rows="2">{{ proyecto.evidencias if proyecto else '' }}</textarea>
+      </div>
+    </div>
+
+    <!-- BLOQUE 2: LINK -->
+    <div id="bloqueLink" style="display:none; background:#fafafa; padding:16px; border-radius:8px; margin-bottom:16px; border:1px solid #eee;">
+      <div class="form-group">
+        <label>Enlace al proyecto / Ficha (Link)</label>
+        <input name="link" id="inputLink" type="url" placeholder="https://drive.google.com/..." value="{{ proyecto.link if proyecto else '' }}">
+        <small style="color:#666;">Asegúrate de que el enlace sea público o accesible para los jurados.</small>
+      </div>
+    </div>
+
+    <div style="margin-top:20px;">
+      <button class="btn btn-primary">Guardar Proyecto</button>
+      <a href="{{ url_for('lista_proyectos') }}" class="btn btn-secondary">Cancelar</a>
+    </div>
+  </form>
+</div>
+
+<script>
+// ============ DATOS DESDE FLASK ============
+const DOCENTES = {{ docentes_json | tojson }};
+const PROYECTO = {
+    programa: "{{ proyecto.programa_estudio if proyecto else '' }}",
+    correo: "{{ proyecto.correo_institucional if proyecto else '' }}",
+    tieneCampos: {% if proyecto and (proyecto.contexto or proyecto.proposito or proyecto.descripcion or proyecto.recursos or proyecto.resultados or proyecto.evidencias) %}true{% else %}false{% endif %},
+    tieneLink: {% if proyecto and proyecto.link %}true{% else %}false{% endif %}
+};
+
+const CATALOGO_FACULTADES = {
+    {% for f in facultades %}"{{ f.nombre }}": {{ f.programas | tojson }},{% endfor %}
+};
+
+// ============ LÓGICA DEL DOCENTE ============
+const selDocente = document.getElementById('selDocente');
+const txtArea = document.getElementById('txtArea');
+const txtFacultad = document.getElementById('txtFacultad');
+const txtCondicion = document.getElementById('txtCondicion');
+const txtCorreo = document.getElementById('txtCorreo');
+const selPrograma = document.getElementById('selPrograma');
+
+function actualizarDatosDocente() {
+    const id = selDocente.value;
+    if (!id) {
+        txtArea.value = ''; txtFacultad.value = ''; txtCondicion.value = ''; txtCorreo.value = '';
+        selPrograma.innerHTML = '<option value="">-- Seleccione docente primero --</option>';
+        return;
+    }
+
+    const docente = DOCENTES.find(d => d.id == id);
+    if (docente) {
+        txtArea.value = docente.area;
+        txtFacultad.value = docente.facultad;
+        txtCondicion.value = docente.condicion;
+        
+        if (!PROYECTO.correo || txtCorreo.value === '') {
+            txtCorreo.value = docente.correo;
+        }
+
+        const programas = CATALOGO_FACULTADES[docente.facultad] || [];
+        selPrograma.innerHTML = '<option value="">-- Seleccione programa --</option>';
+        programas.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p;
+            opt.textContent = p;
+            if (p === PROYECTO.programa) opt.selected = true;
+            selPrograma.appendChild(opt);
+        });
+    }
+}
+
+selDocente.addEventListener('change', actualizarDatosDocente);
+window.addEventListener('DOMContentLoaded', actualizarDatosDocente);
+
+// ============ LÓGICA DE OPCIONES DE DESCRIPCIÓN ============
+const radiosDesc = document.querySelectorAll('.opcion-desc');
+const bloqueCampos = document.getElementById('bloqueCampos');
+const bloqueLink = document.getElementById('bloqueLink');
+const inputLink = document.getElementById('inputLink');
+
+function actualizarBloquesDesc() {
+    let opcion = '1'; // por defecto
+    radiosDesc.forEach(r => { if (r.checked) opcion = r.value; });
+
+    if (opcion === '1') {
+        bloqueCampos.style.display = 'block';
+        bloqueLink.style.display = 'none';
+        inputLink.required = false;
+    } else if (opcion === '2') {
+        bloqueCampos.style.display = 'none';
+        bloqueLink.style.display = 'block';
+        inputLink.required = true;
+    } else if (opcion === '3') {
+        bloqueCampos.style.display = 'block';
+        bloqueLink.style.display = 'block';
+        inputLink.required = true;
+    }
+}
+
+radiosDesc.forEach(r => r.addEventListener('change', actualizarBloquesDesc));
+
+// Al cargar la página (especialmente en Edición), determinamos qué opción marcar
+window.addEventListener('DOMContentLoaded', () => {
+    let opcionInicial = '1';
+    
+    if (PROYECTO.tieneLink && PROYECTO.tieneCampos) opcionInicial = '3';
+    else if (PROYECTO.tieneLink) opcionInicial = '2';
+    else if (PROYECTO.tieneCampos) opcionInicial = '1';
+    
+    // Si es nuevo, marcamos la 1 por defecto
+    if (!PROYECTO.tieneLink && !PROYECTO.tieneCampos) opcionInicial = '1';
+
+    const radioAMarcar = document.querySelector(`.opcion-desc[value="${opcionInicial}"]`);
+    if (radioAMarcar) {
+        radioAMarcar.checked = true;
+        actualizarBloquesDesc();
+    }
+});
+</script>
+{% endblock %}

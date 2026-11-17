@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Inicio - UNCP{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>II Jornada de Buenas Prácticas Innovadoras</h1>
+  <p>Sistema de registro y evaluación de proyectos docentes - UNCP</p>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: 16px;">
+  <div class="card" style="text-align:center">
+    <h3>Docentes</h3><p style="font-size:32px; margin:0">{{ stats.docentes }}</p>
+  </div>
+  <div class="card" style="text-align:center">
+    <h3>Proyectos</h3><p style="font-size:32px; margin:0">{{ stats.proyectos }}</p>
+  </div>
+  <div class="card" style="text-align:center">
+    <h3>Jurados</h3><p style="font-size:32px; margin:0">{{ stats.jurados }}</p>
+  </div>
+  <div class="card" style="text-align:center">
+    <h3>Calificaciones</h3><p style="font-size:32px; margin:0">{{ stats.calificaciones }}</p>
+  </div>
+</div>
+{% endblock %}

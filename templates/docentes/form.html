@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Editar' if docente else 'Nuevo' }} Docente{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>{{ 'Editar' if docente else 'Nuevo' }} Docente</h2>
+  <form method="POST">
+    <div class="form-group">
+      <label>DNI *</label>
+      <input name="dni" value="{{ docente.dni if docente else '' }}" required maxlength="20"
+             placeholder="Ej: 19888618">
+    </div>
+
+    <div class="form-group">
+      <label>Apellidos y nombres *</label>
+      <input name="nombre" value="{{ docente.nombre if docente else '' }}" required
+             placeholder="Ej: AGUIRRE ROJAS, ALEJANDRO ANIBAL">
+    </div>
+
+    <div class="form-group">
+      <label>Condición *</label>
+      <select name="condicion" required>
+        <option value="">-- Seleccionar --</option>
+        <option value="DN" {{ 'selected' if docente and docente.condicion=='DN' }}>DN — Docente Nombrado</option>
+        <option value="DC" {{ 'selected' if docente and docente.condicion=='DC' }}>DC — Docente Contratado</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Categoría *</label>
+      <input name="categoria" value="{{ docente.categoria if docente else '' }}" required
+             placeholder="Ej: ATC--, PDE--, UTP20">
+    </div>
+
+    <div class="form-group">
+      <label>Facultad *</label>
+      <select name="facultad" id="selFacultad" required>
+        <option value="">-- Seleccionar --</option>
+        {% for f in facultades %}
+          <option value="{{ f }}" {{ 'selected' if docente and docente.facultad==f }}>{{ f }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Área (se asigna automáticamente)</label>
+      <input type="text" id="txtArea" readonly value="{{ docente.area if docente else '' }}"
+             style="background:#f0f0f0; cursor:not-allowed;">
+      <small style="color:#666;">No editable: depende de la facultad seleccionada.</small>
+    </div>
+
+    <div class="form-group">
+      <label>Correo institucional *</label>
+      <input name="correo" type="email" value="{{ docente.correo if docente else '' }}" required
+             placeholder="usuario@uncp.edu.pe">
+    </div>
+
+    <div style="margin-top:20px; display:flex; gap:10px;">
+      <button class="btn btn-primary">Guardar</button>
+      <a href="{{ url_for('lista_docentes') }}" class="btn btn-secondary">Cancelar</a>
+    </div>
+  </form>
+</div>
+
+<script>
+const MAPA_FACULTAD_AREA = {
+  {% for f in facultades %}"{{ f }}": "{{ area_desde_facultad(f) or '' }}",{% endfor %}
+};
+
+const selFacultad = document.getElementById('selFacultad');
+const txtArea = document.getElementById('txtArea');
+
+function actualizarArea() {
+  txtArea.value = MAPA_FACULTAD_AREA[selFacultad.value] || '';
+}
+
+selFacultad.addEventListener('change', actualizarArea);
+window.addEventListener('DOMContentLoaded', actualizarArea);
+</script>
+{% endblock %}
