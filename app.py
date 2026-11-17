@@ -395,12 +395,94 @@ def calificar(proyecto_id):
                            ids_calificados=ids_calificados)
 
 
-# ============ RESULTADOS ============
+
+# ============ PORTAL DE JURADOS ============
+@app.route('/jurado')
+def portal_jurado():
+    """Pantalla inicial para que el jurado elija su nombre."""
+    jurados_d1 = Jurado.query.filter_by(dia_asignado=1).all()
+    jurados_d2 = Jurado.query.filter_by(dia_asignado=2).all()
+    return render_template('jurado_portal.html', jurados_d1=jurados_d1, jurados_d2=jurados_d2)
+
+
+@app.route('/jurado/<int:jurado_id>')
+def jurado_proyectos(jurado_id):
+    """Lista de proyectos para un jurado específico."""
+    jurado = Jurado.query.get_or_404(jurado_id)
+    # Trae los proyectos del día del jurado, ordenados por área y hora
+    proyectos = Proyecto.query.filter_by(dia=jurado.dia_asignado)\
+                              .order_by(Proyecto.area, Proyecto.hora).all()
+    
+    # Ver qué proyectos ya calificó este jurado
+    calificados_ids = [c.proyecto_id for c in Calificacion.query.filter_by(jurado_id=jurado_id).all()]
+    
+    return render_template('jurado_proyectos.html', jurado=jurado, proyectos=proyectos, calificados_ids=calificados_ids)
+
+
+# ============ CALIFICAR Y EDITAR ============
+@app.route('/calificar/<int:proyecto_id>/jurado/<int:jurado_id>', methods=['GET', 'POST'])
+def calificar_jurado(proyecto_id, jurado_id):
+    proyecto = Proyecto.query.get_or_404(proyecto_id)
+    jurado = Jurado.query.get_or_404(jurado_id)
+    criterios = Criterio.query.order_by(Criterio.orden).all()
+    
+    # Buscar si ya existe una calificación de este jurado para este proyecto
+    calificacion_existente = Calificacion.query.filter_by(proyecto_id=proyecto_id, jurado_id=jurado_id).first()
+
+    if request.method == 'POST':
+        total = 0
+        detalles = []
+        
+        for c in criterios:
+            nivel_id = request.form.get(f'criterio_{c.id}')
+            if not nivel_id:
+                flash(f'Falta seleccionar el criterio: {c.nombre}', 'danger')
+                return redirect(url_for('calificar_jurado', proyecto_id=proyecto_id, jurado_id=jurado_id))
+            
+            nivel = NivelCriterio.query.get(int(nivel_id))
+            total += nivel.puntaje
+            detalles.append((c.id, nivel.id, nivel.puntaje))
+
+        if calificacion_existente:
+            # ACTUALIZAR SI YA EXISTE
+            calificacion_existente.nota_final = total
+            calificacion_existente.comentario = request.form.get('comentario', '')
+            
+            # Borrar detalles viejos y crear nuevos
+            DetalleCalificacion.query.filter_by(calificacion_id=calificacion_existente.id).delete()
+            for cid, nid, punt in detalles:
+                db.session.add(DetalleCalificacion(calificacion_id=calificacion_existente.id,
+                                                   criterio_id=cid, nivel_id=nid, puntaje_obtenido=punt))
+            flash(f'Calificación actualizada correctamente. Total: {total} / 28 pts', 'success')
+        else:
+            # CREAR NUEVA
+            cal = Calificacion(proyecto_id=proyecto_id, jurado_id=jurado_id,
+                               nota_final=total, comentario=request.form.get('comentario', ''))
+            db.session.add(cal)
+            db.session.flush()
+            for cid, nid, punt in detalles:
+                db.session.add(DetalleCalificacion(calificacion_id=cal.id,
+                                                   criterio_id=cid, nivel_id=nid, puntaje_obtenido=punt))
+            flash(f'Calificación guardada. Total: {total} / 28 pts', 'success')
+        
+        db.session.commit()
+        return redirect(url_for('jurado_proyectos', jurado_id=jurado_id))
+
+    return render_template('calificar.html',
+                           proyecto=proyecto,
+                           jurado=jurado,
+                           criterios=criterios,
+                           calificacion=calificacion_existente)
+
+
+# ============ RESULTADOS (Actualizado) ============
 @app.route('/resultados')
 def resultados():
     data = []
+    # Proyectos ordenados por promedio descendente
     for p in Proyecto.query.order_by(Proyecto.area, Proyecto.nombre_bp).all():
         cals = Calificacion.query.filter_by(proyecto_id=p.id).all()
+        # Calcular promedio sobre 28
         promedio = round(sum(c.nota_final for c in cals) / len(cals), 2) if cals else None
         data.append({
             'proyecto': p,
@@ -410,6 +492,115 @@ def resultados():
         })
     data.sort(key=lambda x: (x['promedio'] is None, -(x['promedio'] or 0)))
     return render_template('resultados.html', data=data)
+
+@app.route('/resultados/excel')
+def resultados_excel():
+    """Genera un Excel con los resultados consolidados y las notas de cada jurado."""
+    proyectos = Proyecto.query.order_by(Proyecto.area, Proyecto.nombre_bp).all()
+    
+    # Obtener todos los jurados (asumimos un máximo de 4 para las columnas, o adaptamos dinámicamente)
+    # Para mantener el orden, los ordenamos por Día y Nombre
+    todos_jurados = Jurado.query.order_by(Jurado.dia_asignado, Jurado.nombre).all()
+    
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Resultados Finales"
+
+    # Encabezados
+    headers = ["Área", "Facultad", "Docente", "Proyecto", "Programa"]
+    for j in todos_jurados:
+        # Acortamos el nombre del jurado para el encabezado
+        nombre_corto = j.nombre.split()[0] if j.nombre else 'Jurado'
+        headers.append(f"J{nombre_corto}")
+    headers.append("Promedio Final")
+
+    ws.append(headers)
+
+    # Estilos
+    fill_header = PatternFill(start_color="1A3D7C", end_color="1A3D7C", fill_type="solid")
+    font_header = Font(bold=True, color="FFFFFF")
+    fill_area = PatternFill(start_color="E8F0FA", end_color="E8F0FA", fill_type="solid")
+    thin = Side(style='thin', color="CCCCCC")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    # Aplicar estilos a la cabecera
+    for cell in ws[1]:
+        cell.fill = fill_header
+        cell.font = font_header
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.border = border
+
+    current_area = None
+
+    for p in proyectos:
+        # Obtener calificaciones de este proyecto
+        cals = Calificacion.query.filter_by(proyecto_id=p.id).all()
+        # Crear un diccionario para buscar rápido la nota de cada jurado
+        notas_por_jurado = {c.jurado_id: c.nota_final for c in cals}
+        
+        row = [
+            p.area or '',
+            p.facultad or '',
+            p.autor.nombre if p.autor else '-',
+            p.nombre_bp,
+            p.programa_estudio or ''
+        ]
+        
+        # Agregar la nota de cada jurado según el orden de la lista de jurados
+        suma_notas = 0
+        for j in todos_jurados:
+            nota = notas_por_jurado.get(j.id)
+            if nota is not None:
+                row.append(nota)
+                suma_notas += nota
+            else:
+                row.append('-')
+        
+        # Calcular promedio (solo sobre los jurados que calificaron)
+        promedio = round(suma_notas / len(cals), 2) if cals else '-'
+        row.append(promedio)
+        
+        ws.append(row)
+        row_idx = ws.max_row
+        
+        # Aplicar bordes y estilos a la fila
+        for cell in ws[row_idx]:
+            cell.border = border
+            cell.alignment = Alignment(vertical="center", wrap_text=True, horizontal="center" if cell.column > 4 else "left")
+        
+        # Colorear al cambiar de área
+        if p.area != current_area:
+            for cell in ws[row_idx]:
+                cell.fill = fill_area
+            current_area = p.area
+
+    # Ajustar ancho de columnas
+    ws.column_dimensions['A'].width = 12
+    ws.column_dimensions['B'].width = 35
+    ws.column_dimensions['C'].width = 30
+    ws.column_dimensions['D'].width = 45
+    ws.column_dimensions['E'].width = 30
+    
+    # Ajustar ancho de columnas de jurados y promedio
+    total_cols = len(headers)
+    for col_idx in range(6, total_cols + 1):
+        # Convertir índice numérico a letra de columna (F, G, H...)
+        col_letter = ws.cell(row=1, column=col_idx).column_letter
+        ws.column_dimensions[col_letter].width = 12
+
+    ws.freeze_panes = "A2"
+
+    # Guardar en memoria
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name='resultados_uncp.xlsx'
+    )
 
 # ============ IMPORTAR DOCENTES DESDE EXCEL ============
 import pandas as pd

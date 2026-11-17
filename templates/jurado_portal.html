@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Portal de Jurados{% endblock %}
+{% block content %}
+<div class="card" style="text-align:center; background:#1a3d7c; color:#fff;">
+  <h1 style="color:#fff; margin-bottom:5px;">Bienvenido Jurado</h1>
+  <p style="color:#cce0ff; font-size:18px;">Seleccione su nombre para ingresar al sistema</p>
+</div>
+
+<div style="display:flex; gap:20px; flex-wrap:wrap; margin-top:20px;">
+  <div class="card" style="flex:1; min-width:300px;">
+    <h3 style="color:#1a3d7c; text-align:center;">Día 1</h3>
+    {% for j in jurados_d1 %}
+      <a href="{{ url_for('jurado_proyectos', jurado_id=j.id) }}" class="btn btn-primary" style="display:block; margin-bottom:10px; padding:15px; font-size:18px;">
+        {{ j.nombre }}
+      </a>
+    {% else %}
+      <p style="text-align:center; color:#666;">No hay jurados asignados al Día 1</p>
+    {% endfor %}
+  </div>
+
+  <div class="card" style="flex:1; min-width:300px;">
+    <h3 style="color:#1a3d7c; text-align:center;">Día 2</h3>
+    {% for j in jurados_d2 %}
+      <a href="{{ url_for('jurado_proyectos', jurado_id=j.id) }}" class="btn btn-primary" style="display:block; margin-bottom:10px; padding:15px; font-size:18px;">
+        {{ j.nombre }}
+      </a>
+    {% else %}
+      <p style="text-align:center; color:#666;">No hay jurados asignados al Día 2</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

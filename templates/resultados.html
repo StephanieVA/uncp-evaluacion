@@ -2,19 +2,71 @@
 {% block title %}Resultados{% endblock %}
 {% block content %}
 <div class="card">
-  <h2>Resultados consolidados</h2>
+  <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
+  <h2 style="margin:0;">Resultados Consolidados (Máximo 28 pts)</h2>
+  <a href="{{ url_for('resultados_excel') }}" class="btn btn-success">📥 Descargar Resultados (Excel)</a>
+</div>
   <table>
     <thead>
-      <tr><th>Proyecto</th><th>Docente</th><th>Área</th><th>Jurados</th><th>Promedio</th></tr>
+      <tr>
+        <th>Proyecto / Docente</th>
+        <th>Área</th>
+        <th>Jurados</th>
+        <th>Puntaje Final</th>
+        <th>Detalle y Edición</th>
+      </tr>
     </thead>
     <tbody>
     {% for row in data %}
       <tr>
-        <td>{{ row.proyecto.nombre_bp }}</td>
-        <td>{{ row.proyecto.autor.nombre }}</td>
+        <td>
+          <strong>{{ row.proyecto.nombre_bp }}</strong><br>
+          <small style="color:#666;">{{ row.proyecto.autor.nombre }}</small>
+        </td>
         <td>{{ row.proyecto.area }}</td>
-        <td>{{ row.calificaciones|length }}/4 {% if row.completo %}✅{% endif %}</td>
-        <td><strong>{{ row.promedio if row.promedio is not none else '-' }}</strong></td>
+        <td>
+          {{ row.calificaciones|length }}/4 
+          {% if row.completo %}<span style="color:#27ae60;">✅</span>{% endif %}
+        </td>
+        <td>
+          {% if row.promedio is not none %}
+            <strong style="font-size:16px; color:#1a3d7c;">{{ row.promedio }}</strong> / 28
+          {% else %}
+            -
+          {% endif %}
+        </td>
+        <td>
+          <button onclick="document.getElementById('detalle-{{ row.proyecto.id }}').style.display = document.getElementById('detalle-{{ row.proyecto.id }}').style.display === 'none' ? 'table-row' : 'none';" class="btn btn-secondary" style="padding:4px 8px; font-size:12px;">Ver notas</button>
+        </td>
+      </tr>
+      <!-- Fila oculta con el detalle de los jurados -->
+      <tr id="detalle-{{ row.proyecto.id }}" style="display:none; background:#fafafa;">
+        <td colspan="5">
+          <table style="width:100%; font-size:13px;">
+            <thead>
+              <tr style="background:#eee;">
+                <th>Jurado</th>
+                <th>Puntaje</th>
+                <th>Comentario</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for c in row.calificaciones %}
+              <tr>
+                <td>{{ c.jurado.nombre }}</td>
+                <td><strong>{{ c.nota_final }}</strong> / 28</td>
+                <td><small style="color:#666;">{{ c.comentario or 'Sin comentario' }}</small></td>
+                <td>
+                  <a href="{{ url_for('calificar_jurado', proyecto_id=row.proyecto.id, jurado_id=c.jurado.id) }}" class="btn btn-secondary" style="padding:2px 8px; font-size:12px;">Editar</a>
+                </td>
+              </tr>
+              {% else %}
+              <tr><td colspan="4" style="text-align:center; color:#999;">Sin calificaciones aún</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </td>
       </tr>
     {% endfor %}
     </tbody>

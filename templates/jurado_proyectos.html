@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Proyectos de {{ jurado.nombre }}{% endblock %}
+{% block content %}
+<div class="card" style="display:flex; justify-content:space-between; align-items:center;">
+  <div>
+    <h2 style="margin:0;">Panel de Jurado</h2>
+    <p style="color:#666; margin:5px 0 0;">Jurado: <strong>{{ jurado.nombre }}</strong> (Día {{ jurado.dia_asignado }})</p>
+  </div>
+  <a href="{{ url_for('portal_jurado') }}" class="btn btn-secondary">Salir</a>
+</div>
+
+<div class="card" style="background:#e8f5e9; border-left: 4px solid #27ae60;">
+  <p style="margin:0; font-size:15px;">Toque un proyecto para calificar o modificar su nota.</p>
+</div>
+
+<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:16px;">
+  {% for p in proyectos %}
+  <div class="card" style="margin-bottom:0;">
+    <span style="display:inline-block; background:#1a3d7c; color:#fff; padding:2px 8px; border-radius:10px; font-size:12px; margin-bottom:8px;">{{ p.hora or '--:--' }} - {{ p.area }}</span>
+    <h3 style="margin:0 0 5px;">{{ p.nombre_bp }}</h3>
+    <p style="font-size:13px; color:#666; margin-bottom:15px;">{{ p.autor.nombre }}</p>
+    
+    {% if p.id in calificados_ids %}
+      <a href="{{ url_for('calificar_jurado', proyecto_id=p.id, jurado_id=jurado.id) }}" class="btn btn-success" style="display:block; text-align:center; width:100%;">
+        ✅ Editar Calificación
+      </a>
+    {% else %}
+      <a href="{{ url_for('calificar_jurado', proyecto_id=p.id, jurado_id=jurado.id) }}" class="btn btn-primary" style="display:block; text-align:center; width:100%;">
+        📝 Calificar Proyecto
+      </a>
+    {% endif %}
+  </div>
+  {% else %}
+  <div class="card" style="grid-column: 1 / -1; text-align:center; color:#666;">
+    <p>No hay proyectos programados para su día.</p>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
