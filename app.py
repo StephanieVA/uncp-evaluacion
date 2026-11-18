@@ -844,16 +844,14 @@ def simulador():
 # ============ CRONOGRAMA AUTOMÁTICO POR ÁREA ============
 @app.route('/cronograma/auto', methods=['POST'])
 def cronograma_auto():
-    """Genera día y hora automáticamente ordenando por área y docente, respetando el almuerzo."""
+    """Genera día y hora llenando el Día 1 hasta el tope, respetando el almuerzo, y luego el Día 2."""
     from datetime import datetime, timedelta
 
     duracion = int(request.form.get('duracion', 15))
     receso = int(request.form.get('receso', 10))
-    hora_inicio_str = request.form.get('hora_inicio', '08:00')
-    hora_fin_str = request.form.get('hora_fin', '18:00')
-    almuerzo_min = int(request.form.get('almuerzo', 60))
-    
-    # Hora de inicio del almuerzo (por defecto 13:00)
+    hora_inicio_str = request.form.get('hora_inicio', '08:40')
+    hora_fin_str = request.form.get('hora_fin', '17:00')
+    almuerzo_min = int(request.form.get('almuerzo', 30))
     hora_almuerzo_str = request.form.get('hora_almuerzo', '13:00')
 
     inicio = datetime.strptime(hora_inicio_str, '%H:%M')
@@ -861,53 +859,54 @@ def cronograma_auto():
     hora_almuerzo = datetime.strptime(hora_almuerzo_str, '%H:%M')
     fin_almuerzo = hora_almuerzo + timedelta(minutes=almuerzo_min)
 
-    # Calcular cuántos minutos efectivos hay en un día (restando el almuerzo)
-    min_totales = int((fin - inicio).total_seconds() / 60)
-    min_efectivos = min_totales - almuerzo_min
-    minutos_por_proyecto = duracion + receso
-    max_por_dia = max(1, min_efectivos // minutos_por_proyecto)
-
     # 1. Traer proyectos ordenados ESTRICTAMENTE por Área y Docente
     proyectos = Proyecto.query.join(Docente).order_by(
         Proyecto.area, 
         Docente.nombre
     ).all()
 
-    total_proyectos = len(proyectos)
-    if total_proyectos == 0:
+    if not proyectos:
         flash('No hay proyectos para agendar.', 'warning')
         return redirect(url_for('cronograma'))
 
-    # 2. Asignar días equilibradamente
-    mitad = (total_proyectos + 1) // 2
-    for i, p in enumerate(proyectos):
-        p.dia = 1 if i < mitad else 2
-        p.duracion = duracion
-
-    # 3. Asignar horas saltando el almuerzo
+    # 2. Variables de control
+    dia_actual = 1
+    hora_actual = inicio
     contador_dia_1 = 0
     contador_dia_2 = 0
-    
+    minutos_por_proyecto = duracion + receso
+
     for p in proyectos:
-        if p.dia == 1:
-            posicion = contador_dia_1
+        # Si ya nos pasamos de la hora de fin, saltamos al Día 2 y reiniciamos la hora
+        if hora_actual + timedelta(minutes=duracion) > fin:
+            dia_actual = 2
+            hora_actual = inicio
+
+        # Si el bloque de tiempo choca con el almuerzo, saltamos el almuerzo
+        # (Verificamos si la hora de inicio o fin del proyecto cae dentro del almuerzo)
+        if hora_actual >= hora_almuerzo and hora_actual < fin_almuerzo:
+            hora_actual = fin_almuerzo
+        # Si el proyecto empezaría justo antes del almuerzo pero terminaría después,
+        # mejor lo pasamos después del almuerzo para no interrumpir.
+        elif hora_actual < hora_almuerzo and (hora_actual + timedelta(minutes=duracion)) > hora_almuerzo:
+            hora_actual = fin_almuerzo
+
+        # Asignar datos
+        p.dia = dia_actual
+        p.hora = hora_actual.strftime('%H:%M')
+        p.duracion = duracion
+
+        # Avanzar el reloj para el siguiente proyecto
+        hora_actual += timedelta(minutes=minutos_por_proyecto)
+
+        # Contadores para el mensaje final
+        if dia_actual == 1:
             contador_dia_1 += 1
         else:
-            posicion = contador_dia_2
             contador_dia_2 += 1
 
-        # Calcular hora base secuencial
-        minutos_a_sumar = posicion * minutos_por_proyecto
-        hora_asignada = inicio + timedelta(minutes=minutos_a_sumar)
-
-        # Si la hora cae dentro del almuerzo o después, le sumamos el tiempo del almuerzo
-        if hora_asignada >= hora_almuerzo:
-            hora_asignada += timedelta(minutes=almuerzo_min)
-
-        p.hora = hora_asignada.strftime('%H:%M')
-
     db.session.commit()
-    flash(f'Cronograma generado correctamente. Día 1 ({contador_dia_1} proy.) y Día 2 ({contador_dia_2} proy.).', 'success')
+    flash(f'Cronograma generado. Día 1: {contador_dia_1} proyectos. Día 2: {contador_dia_2} proyectos.', 'success')
     return redirect(url_for('cronograma'))
 
 # ============ INICIALIZACIÓN ============
