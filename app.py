@@ -247,8 +247,8 @@ def cronograma_excel():
     ws = wb.active
     ws.title = "Cronograma"
 
-    # Encabezados
-    headers = ["Área", "Docente", "Nombre del Proyecto", "Día", "Hora"]
+    # Encabezados (Agregamos Facultad aquí)
+    headers = ["Área", "Facultad", "Docente", "Nombre del Proyecto", "Día", "Hora"]
     ws.append(headers)
 
     # Estilos
@@ -269,8 +269,13 @@ def cronograma_excel():
     current_area = None
     for p in proyectos:
         area = p.area or 'SIN ÁREA'
+        # Usamos p.facultad, si no existe ponemos un guion
+        facultad = p.facultad or '-'
+        
+        # Agregamos la facultad a la fila (asegurándonos de limpiar caracteres extraños)
         ws.append([
             limpiar_texto_excel(area),
+            limpiar_texto_excel(facultad),
             limpiar_texto_excel(p.autor.nombre if p.autor else '-'),
             limpiar_texto_excel(p.nombre_bp),
             limpiar_texto_excel(f"Día {p.dia}" if p.dia else '-'),
@@ -289,12 +294,13 @@ def cronograma_excel():
                 cell.fill = fill_area
             current_area = area
 
-    # Ajustar ancho de columnas
-    ws.column_dimensions['A'].width = 12
-    ws.column_dimensions['B'].width = 35
-    ws.column_dimensions['C'].width = 50
-    ws.column_dimensions['D'].width = 10
-    ws.column_dimensions['E'].width = 10
+    # Ajustar ancho de columnas (Actualizado para la nueva columna)
+    ws.column_dimensions['A'].width = 12  # Área
+    ws.column_dimensions['B'].width = 40  # Facultad
+    ws.column_dimensions['C'].width = 35  # Docente
+    ws.column_dimensions['D'].width = 50  # Nombre del Proyecto
+    ws.column_dimensions['E'].width = 10  # Día
+    ws.column_dimensions['F'].width = 10  # Hora
 
     # Congelar la primera fila
     ws.freeze_panes = "A2"
@@ -310,8 +316,6 @@ def cronograma_excel():
         as_attachment=True,
         download_name='cronograma_uncp.xlsx'
     )
-
-
 # ============ JURADOS (CRUD) ============
 @app.route('/jurados')
 def lista_jurados():
