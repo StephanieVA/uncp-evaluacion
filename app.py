@@ -844,34 +844,70 @@ def simulador():
 # ============ CRONOGRAMA AUTOMÁTICO POR ÁREA ============
 @app.route('/cronograma/auto', methods=['POST'])
 def cronograma_auto():
-    """Genera automáticamente día + hora asignando secuencialmente por área."""
+    """Genera día y hora automáticamente ordenando por área y docente, respetando el almuerzo."""
     from datetime import datetime, timedelta
 
     duracion = int(request.form.get('duracion', 15))
     receso = int(request.form.get('receso', 10))
-    hora_inicio = request.form.get('hora_inicio', '08:00')
-    hora_fin = request.form.get('hora_fin', '18:00')
-    almuerzo = int(request.form.get('almuerzo', 60))
+    hora_inicio_str = request.form.get('hora_inicio', '08:00')
+    hora_fin_str = request.form.get('hora_fin', '18:00')
+    almuerzo_min = int(request.form.get('almuerzo', 60))
+    
+    # Hora de inicio del almuerzo (por defecto 13:00)
+    hora_almuerzo_str = request.form.get('hora_almuerzo', '13:00')
 
-    inicio = datetime.strptime(hora_inicio, '%H:%M')
-    fin = datetime.strptime(hora_fin, '%H:%M')
-    min_efectivos = int((fin - inicio).total_seconds() / 60) - almuerzo
+    inicio = datetime.strptime(hora_inicio_str, '%H:%M')
+    fin = datetime.strptime(hora_fin_str, '%H:%M')
+    hora_almuerzo = datetime.strptime(hora_almuerzo_str, '%H:%M')
+    fin_almuerzo = hora_almuerzo + timedelta(minutes=almuerzo_min)
+
+    # Calcular cuántos minutos efectivos hay en un día (restando el almuerzo)
+    min_totales = int((fin - inicio).total_seconds() / 60)
+    min_efectivos = min_totales - almuerzo_min
     minutos_por_proyecto = duracion + receso
     max_por_dia = max(1, min_efectivos // minutos_por_proyecto)
 
-    proyectos = Proyecto.query.order_by(Proyecto.area, Proyecto.nombre_bp).all()
-    idx_global = 0
-    for p in proyectos:
-        dia = (idx_global // max_por_dia) + 1
-        posicion_en_dia = idx_global % max_por_dia
-        hora = inicio + timedelta(minutes=posicion_en_dia * minutos_por_proyecto)
-        p.dia = dia if dia <= 2 else 2  # si hay más de 2 días, se aprieta al día 2
-        p.hora = hora.strftime('%H:%M')
+    # 1. Traer proyectos ordenados ESTRICTAMENTE por Área y Docente
+    proyectos = Proyecto.query.join(Docente).order_by(
+        Proyecto.area, 
+        Docente.nombre
+    ).all()
+
+    total_proyectos = len(proyectos)
+    if total_proyectos == 0:
+        flash('No hay proyectos para agendar.', 'warning')
+        return redirect(url_for('cronograma'))
+
+    # 2. Asignar días equilibradamente
+    mitad = (total_proyectos + 1) // 2
+    for i, p in enumerate(proyectos):
+        p.dia = 1 if i < mitad else 2
         p.duracion = duracion
-        idx_global += 1
+
+    # 3. Asignar horas saltando el almuerzo
+    contador_dia_1 = 0
+    contador_dia_2 = 0
+    
+    for p in proyectos:
+        if p.dia == 1:
+            posicion = contador_dia_1
+            contador_dia_1 += 1
+        else:
+            posicion = contador_dia_2
+            contador_dia_2 += 1
+
+        # Calcular hora base secuencial
+        minutos_a_sumar = posicion * minutos_por_proyecto
+        hora_asignada = inicio + timedelta(minutes=minutos_a_sumar)
+
+        # Si la hora cae dentro del almuerzo o después, le sumamos el tiempo del almuerzo
+        if hora_asignada >= hora_almuerzo:
+            hora_asignada += timedelta(minutes=almuerzo_min)
+
+        p.hora = hora_asignada.strftime('%H:%M')
 
     db.session.commit()
-    flash(f'Cronograma generado automáticamente para {len(proyectos)} proyectos.', 'success')
+    flash(f'Cronograma generado correctamente. Día 1 ({contador_dia_1} proy.) y Día 2 ({contador_dia_2} proy.).', 'success')
     return redirect(url_for('cronograma'))
 
 # ============ INICIALIZACIÓN ============
