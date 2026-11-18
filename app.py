@@ -228,6 +228,15 @@ def asignar_cronograma():
     return redirect(url_for('cronograma'))
 
 
+import re
+
+def limpiar_texto_excel(texto):
+    """Elimina caracteres de control que openpyxl no acepta (como \x00 a \x1f)"""
+    if texto is None:
+        return ''
+    texto = str(texto)
+    # Reemplaza caracteres de control por espacio (excepto \n y \r)
+    return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', texto)
 
 @app.route('/cronograma/excel')
 def cronograma_excel():
@@ -261,11 +270,11 @@ def cronograma_excel():
     for p in proyectos:
         area = p.area or 'SIN ÁREA'
         ws.append([
-            area,
-            p.autor.nombre if p.autor else '-',
-            p.nombre_bp,
-            f"Día {p.dia}" if p.dia else '-',
-            p.hora or '-'
+            limpiar_texto_excel(area),
+            limpiar_texto_excel(p.autor.nombre if p.autor else '-'),
+            limpiar_texto_excel(p.nombre_bp),
+            limpiar_texto_excel(f"Día {p.dia}" if p.dia else '-'),
+            limpiar_texto_excel(p.hora or '-')
         ])
 
         # Aplicar bordes a la fila
