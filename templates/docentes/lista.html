@@ -56,4 +56,23 @@
     </tbody>
   </table>
 </div>
+<script>
+document.getElementById('buscadorDocentes').addEventListener('keyup', function() {
+    const filtro = this.value.toLowerCase();
+    // Selecciona todas las filas del cuerpo de la tabla
+    const filas = document.querySelectorAll('table tbody tr');
+    
+    filas.forEach(fila => {
+        // Une todo el texto de la fila (DNI, nombre, facultad, etc.)
+        const textoFila = fila.textContent.toLowerCase();
+        
+        // Si el texto incluye lo que se escribe, se muestra. Si no, se oculta.
+        if (textoFila.includes(filtro)) {
+            fila.style.display = '';
+        } else {
+            fila.style.display = 'none';
+        }
+    });
+});
+</script>
 {% endblock %}
