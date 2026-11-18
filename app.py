@@ -198,8 +198,11 @@ def eliminar_proyecto(id):
 # ============ CRONOGRAMA ============
 @app.route('/cronograma')
 def cronograma():
-    # Ordenar por área y luego alfabéticamente por nombre del proyecto
-    proyectos = Proyecto.query.order_by(Proyecto.area, Proyecto.nombre_bp).all()
+    # Ordenar por Área, luego por el nombre del Docente (Alfabético)
+    proyectos = Proyecto.query.join(Docente).order_by(
+        Proyecto.area, 
+        Docente.nombre
+    ).all()
 
     # Agrupar por área
     agrupados = {}
@@ -207,7 +210,7 @@ def cronograma():
         area = p.area or 'SIN ÁREA'
         agrupados.setdefault(area, []).append(p)
 
-    # Ordenar las áreas alfabéticamente también
+    # Ordenar las áreas alfabéticamente
     agrupados = dict(sorted(agrupados.items()))
 
     return render_template('cronograma.html', agrupados=agrupados, total=len(proyectos))
@@ -241,7 +244,11 @@ def limpiar_texto_excel(texto):
 @app.route('/cronograma/excel')
 def cronograma_excel():
     """Genera y descarga un Excel con el cronograma ordenado."""
-    proyectos = Proyecto.query.order_by(Proyecto.area, Proyecto.nombre_bp).all()
+    # Ordenar por Área y luego por nombre del Docente
+    proyectos = Proyecto.query.join(Docente).order_by(
+        Proyecto.area, 
+        Docente.nombre
+    ).all()
 
     wb = Workbook()
     ws = wb.active
