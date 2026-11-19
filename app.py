@@ -907,12 +907,12 @@ def exportar_evaluaciones():
     
     # --- HOJA 2: CUESTIONARIO ---
     ws2 = wb.create_sheet("Cuestionario Docente")
-            ws2.append([
+    ws2.append([
             limpiar_texto_excel(d.dni), 
             limpiar_texto_excel(d.nombre), 
             d.nota_cuestionario if d.nota_cuestionario else 0, 
             limpiar_texto_excel(periodo_cues)
-        ])
+       ])
 
     # --- HOJA 3: CONSOLIDADO FINAL ---
     ws3 = wb.create_sheet("Consolidado Final")
