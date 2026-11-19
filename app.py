@@ -889,62 +889,70 @@ def cronograma_auto():
 
 @app.route('/exportar_evaluaciones')
 def exportar_evaluaciones():
-    # Recibir periodos seleccionados (por defecto 2026-I)
     periodo_des = request.args.get('periodo_desempeno', '2026-I')
     periodo_cues = request.args.get('periodo_cuestionario', '2026-I')
     
     wb = Workbook()
     
-    # --- HOJA 1: DESEMPEÑO DOCENTE ---
     ws1 = wb.active
     ws1.title = "Desempeño Docente"
     ws1.append(["FACULTAD", "DNI", "DOCENTE", "PUNTAJE", "PERIODO"])
     
-    # --- HOJA 2: CUESTIONARIO ---
     ws2 = wb.create_sheet("Cuestionario Docente")
     ws2.append(["Código", "Apellidos y Nombres", "PF", "PERIODO"])
 
-    # --- HOJA 3: CONSOLIDADO FINAL ---
     ws3 = wb.create_sheet("Consolidado Final")
-    ws3.append(["Área", "Facultad", "DNI", "Docente", "Proyecto", "Nota Jurados (28)", "Desempeño (100)", "Cuestionario (100)", "Promedio Final (%)"])
+    ws3.append(["Área", "Facultad", "DNI", "Docente", "Proyecto", "Nota Jurados (28)", "Desempeño", "Cuestionario", "Promedio Final (%)"])
 
-    # Llenar datos de docentes
     docentes = Docente.query.all()
+    
+    # Diccionario para guardar las notas consolidadas (para usarlas en la Hoja 3)
+    notas_calculadas = {}
+
     for d in docentes:
+        # Función auxiliar para obtener la nota según el periodo
+        def obtener_nota(tipo, periodo_elegido):
+            if periodo_elegido == 'AMBOS':
+                # Si es ambos, promediamos las notas encontradas
+                notas = NotaPeriodo.query.filter_by(docente_id=d.id, tipo=tipo).all()
+                if notas:
+                    return round(sum(n.nota for n in notas) / len(notas), 2)
+                return 0
+            else:
+                nota_obj = NotaPeriodo.query.filter_by(docente_id=d.id, tipo=tipo, periodo=periodo_elegido).first()
+                return nota_obj.nota if nota_obj else 0
+
+        n_des = obtener_nota('desempeno', periodo_des)
+        n_cue = obtener_nota('cuestionario', periodo_cues)
+        
+        notas_calculadas[d.id] = {'desempeno': n_des, 'cuestionario': n_cue}
+
         ws1.append([
             limpiar_texto_excel(d.facultad or '-'), 
             limpiar_texto_excel(d.dni), 
             limpiar_texto_excel(d.nombre), 
-            f"{d.nota_desempeno}%" if d.nota_desempeno else "0%", 
+            f"{n_des}%", 
             limpiar_texto_excel(periodo_des)
         ])
         ws2.append([
             limpiar_texto_excel(d.dni), 
             limpiar_texto_excel(d.nombre), 
-            d.nota_cuestionario if d.nota_cuestionario else 0, 
+            n_cue, 
             limpiar_texto_excel(periodo_cues)
         ])
 
-    # Lógica del Consolidado
-    resultados_por_area = {}
-    proyectos = Proyecto.query.all()
-    
-    for p in proyectos:
+    for p in Proyecto.query.all():
         cals = Calificacion.query.filter_by(proyecto_id=p.id).all()
         suma_notas = sum(c.nota_final for c in cals)
-        prom_jurados = (suma_notas / len(cals)) if cals else 0 # Sobre 28
-        
+        prom_jurados = (suma_notas / len(cals)) if cals else 0
         porcentaje_jurados = (prom_jurados / 28) * 100 if prom_jurados else 0
         
         doc = p.autor
-        nota_des = doc.nota_desempeno if doc else 0
-        nota_cue = doc.nota_cuestionario if doc else 0
+        nota_des = notas_calculadas[doc.id]['desempeno'] if doc and doc.id in notas_calculadas else 0
+        nota_cue = notas_calculadas[doc.id]['cuestionario'] if doc and doc.id in notas_calculadas else 0
         
-        peso_jurados = 0.40
-        peso_desempeno = 0.30
-        peso_cuestionario = 0.30
-        
-        prom_final = (porcentaje_jurados * peso_jurados) + (nota_des * peso_desempeno) + (nota_cue * peso_cuestionario)
+        # Cálculo del promedio final
+        prom_final = (porcentaje_jurados * 0.40) + (nota_des * 0.30) + (nota_cue * 0.30)
         
         row = [
             limpiar_texto_excel(p.area or ''),
@@ -954,15 +962,8 @@ def exportar_evaluaciones():
             limpiar_texto_excel(p.nombre_bp),
             round(prom_jurados, 2), nota_des, nota_cue, round(prom_final, 2)
         ]
-        
         ws3.append(row)
-        
-        area_key = p.area or 'SIN ÁREA'
-        if area_key not in resultados_por_area:
-            resultados_por_area[area_key] = []
-        resultados_por_area[area_key].append({'fila': row, 'promedio': prom_final})
 
-    # Dar formato a las hojas
     for ws in [ws1, ws2, ws3]:
         for cell in ws[1]:
             cell.font = Font(bold=True, color="FFFFFF")
@@ -975,8 +976,6 @@ def exportar_evaluaciones():
     wb.save(output)
     output.seek(0)
     return send_file(output, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', as_attachment=True, download_name='Reporte_Consolidado.xlsx')
-  
-
 @app.route('/exportar')
 def vista_exportar():
     # Hacemos la misma lógica del cálculo de promedios para mostrarla en la web
