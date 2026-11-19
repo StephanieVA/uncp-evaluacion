@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Exportar Evaluaciones{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>📊 Exportar Datos de Evaluación</h2>
+  <p>Seleccione el periodo a considerar y descargue el consolidado con los 3 primeros puestos por área.</p>
+  
+  <form action="{{ url_for('exportar_evaluaciones') }}" method="GET" style="display:flex; gap:15px; flex-wrap:wrap; align-items:end;">
+    <div class="form-group" style="margin:0;">
+      <label>Periodo Desempeño</label>
+      <select name="periodo_desempeno" style="padding:10px; border-radius:6px;">
+        <option value="2025-II">2025-II</option>
+        <option value="2026-I" selected>2026-I</option>
+        <option value="AMBOS">Ambos Periodos</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin:0;">
+      <label>Periodo Cuestionario</label>
+      <select name="periodo_cuestionario" style="padding:10px; border-radius:6px;">
+        <option value="2025-II">2025-II</option>
+        <option value="2026-I" selected>2026-I</option>
+        <option value="AMBOS">Ambos Periodos</option>
+      </select>
+    </div>
+    <button type="submit" class="btn btn-success" style="padding:12px 24px;">📥 Descargar Excel</button>
+  </form>
+</div>
+
+<!-- Aquí mostramos los 3 primeros puestos en la web -->
+<div class="card">
+  <h3>🏆 Primeros Puestos por Área</h3>
+  <p style="font-size:13px; color:#666;">* Basado en los datos actuales. La descarga del Excel incluye a todos los docentes.</p>
+  
+  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:16px;">
+    {% for area, lista in resultados_por_area.items() %}
+    <div style="border:1px solid #eee; border-radius:8px; padding:16px; background:#fafafa;">
+      <h4 style="margin-top:0; color:#1a3d7c; border-bottom:2px solid #ca8a04; padding-bottom:4px;">{{ area }}</h4>
+      <ol style="padding-left:20px; margin:0;">
+        {% for item in lista[:3] %}
+        <li style="margin-bottom:8px;">
+          <strong>{{ item.nombre }}</strong><br>
+          <span style="font-size:12px; color:#555;">Puntaje Final: <strong style="color:#27ae60;">{{ item.promedio }}%</strong></span>
+        </li>
+        {% endfor %}
+      </ol>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
