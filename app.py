@@ -2,6 +2,7 @@ import os
 import io
 from flask import request, send_file
 from openpyxl import Workbook
+from openpyxl import load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from flask import (Flask, render_template, request, redirect,
                    url_for, flash, abort)
@@ -1006,6 +1007,76 @@ def vista_exportar():
         resultados_por_area[area].sort(key=lambda x: x['promedio'], reverse=True)
         
     return render_template('exportar.html', resultados_por_area=resultados_por_area)
+
+@app.route('/docentes/importar_notas', methods=['GET', 'POST'])
+def importar_notas():
+    if request.method == 'POST':
+        archivo = request.files.get('archivo')
+        tipo_nota = request.form.get('tipo_nota') # 'desempeno' o 'cuestionario'
+        
+        if not archivo or archivo.filename == '':
+            flash('Debes seleccionar un archivo Excel.', 'danger')
+            return redirect(url_for('importar_notas'))
+
+        try:
+            # Leer el Excel usando openpyxl (para no depender de pandas)
+            wb = load_workbook(archivo, data_only=True)
+            ws = wb.active
+            headers = [cell.value for cell in ws[1]]
+            
+            # Identificar columnas (DNI y la Nota)
+            idx_dni = None
+            idx_nota = None
+            
+            for i, h in enumerate(headers):
+                if h and str(h).strip().upper() in ['DNI', 'CÓDIGO', 'CODIGO']:
+                    idx_dni = i
+                if h and str(h).strip().upper() in ['NOTA', 'PF', 'PUNTAJE', 'DESEMPEÑO']:
+                    idx_nota = i
+            
+            if idx_dni is None or idx_nota is None:
+                flash('El Excel debe tener una columna "DNI" (o Código) y una columna "Nota" (o PF).', 'danger')
+                return redirect(url_for('importar_notas'))
+
+            actualizados = 0
+            no_encontrados = 0
+            
+            # Recorrer filas
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if not row or row[idx_dni] is None:
+                    continue
+                    
+                dni = str(row[idx_dni]).strip().replace('.0', '') # Limpiar decimales de Excel
+                nota_val = row[idx_nota]
+                
+                if nota_val is None:
+                    continue
+                    
+                try:
+                    nota = float(nota_val)
+                except:
+                    continue # Si no es un número, saltar
+
+                # Buscar al docente por DNI
+                docente = Docente.query.filter_by(dni=dni).first()
+                if docente:
+                    if tipo_nota == 'desempeno':
+                        docente.nota_desempeno = nota
+                    else:
+                        docente.nota_cuestionario = nota
+                    actualizados += 1
+                else:
+                    no_encontrados += 1
+
+            db.session.commit()
+            flash(f'Importación exitosa: {actualizados} notas actualizadas. ({no_encontrados} DNI no encontrados)', 'success')
+            return redirect(url_for('lista_docentes'))
+
+        except Exception as e:
+            flash(f'Error al procesar el archivo: {str(e)}', 'danger')
+            return redirect(url_for('importar_notas'))
+
+    return render_template('docentes/importar_notas.html')
 
 # ============ INICIALIZACIÓN ============
 with app.app_context():
