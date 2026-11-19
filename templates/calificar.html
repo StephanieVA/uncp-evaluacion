@@ -2,7 +2,6 @@
 {% block title %}Calificar: {{ proyecto.nombre_bp }}{% endblock %}
 {% block content %}
 <style>
-    /* Estilos para que se vea bien en celular y tablet */
     .rubrica-container { display: flex; flex-direction: column; gap: 15px; }
     .criterio-card { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
     .criterio-titulo { font-weight: bold; color: #1a3d7c; margin-bottom: 10px; font-size: 16px; border-bottom: 2px solid #f0f0f0; padding-bottom: 5px; }
@@ -22,6 +21,12 @@
     }
     .opcion-item label:hover { background: #f8f9fa; }
     
+    /* Estilo especial para No se presentó */
+    .no-vino-card { border: 2px dashed #c0392b; background: #fdf2f2; text-align: center; cursor: pointer; padding: 20px; border-radius: 8px; }
+    .no-vino-card input[type="radio"] { display: none; }
+    .no-vino-card input[type="radio"]:checked + label { color: #c0392b; font-weight: bold; }
+    .no-vino-card label { cursor: pointer; font-size: 18px; display: block; margin: 0; }
+
     .total-box { background: #1a3d7c; color: #fff; padding: 20px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; margin-top: 20px; flex-wrap: wrap; gap: 15px; }
 </style>
 
@@ -37,8 +42,17 @@
   </div>
 </div>
 
-<form method="POST">
-  <div class="rubrica-container">
+<form method="POST" id="formCalificar">
+  
+  <!-- OPCIÓN NO SE PRESENTÓ -->
+  <div class="card no-vino-card" id="cardNoVino">
+    <input type="radio" name="no_se_presento" id="checkNoVino" value="1" onclick="marcarNoVino()" {% if calificacion and calificacion.nota_final == 0 %}checked{% endif %}>
+    <label for="checkNoVino">
+      🚫 Marcar como: <strong>DOCENTE NO SE PRESENTÓ (Nota: 0)</strong>
+    </label>
+  </div>
+
+  <div class="rubrica-container" id="rubricaDiv">
     {% for criterio in criterios %}
     <div class="criterio-card">
       <div class="criterio-titulo">{{ loop.index }}. {{ criterio.nombre }}</div>
@@ -47,7 +61,7 @@
         {% for nivel in criterio.niveles %}
         <div class="opcion-item">
           <input type="radio" name="criterio_{{ criterio.id }}" id="radio_{{ criterio.id }}_{{ nivel.id }}"
-                 value="{{ nivel.id }}" data-puntaje="{{ nivel.puntaje }}" required
+                 value="{{ nivel.id }}" data-puntaje="{{ nivel.puntaje }}" class="radio-rubrica"
                  {% if calificacion %}{% for det in calificacion.detalles %}{% if det.criterio_id == criterio.id and det.nivel_id == nivel.id %}checked{% endif %}{% endfor %}{% endif %}>
           <label for="radio_{{ criterio.id }}_{{ nivel.id }}">
             <div style="font-weight:bold; font-size:14px; margin-bottom:4px;">{{ nivel.etiqueta }} ({{ nivel.puntaje }})</div>
@@ -56,10 +70,6 @@
         </div>
         {% endfor %}
       </div>
-    </div>
-    {% else %}
-    <div class="card" style="text-align:center; color:red;">
-      <p>Error: No hay criterios cargados en la base de datos. Ejecuta <code>seed.py</code>.</p>
     </div>
     {% endfor %}
 
@@ -84,22 +94,61 @@
 </form>
 
 <script>
-const radios = document.querySelectorAll('input[type=radio]');
+const radiosRubrica = document.querySelectorAll('.radio-rubrica');
+const checkNoVino = document.getElementById('checkNoVino');
+const rubricaDiv = document.getElementById('rubricaDiv');
 const preview = document.getElementById('notaPreview');
 
 function recalcular() {
+    if (checkNoVino.checked) {
+        preview.textContent = "0";
+        return;
+    }
     let total = 0;
-    // Sumar los puntos de todos los radio buttons seleccionados
-    document.querySelectorAll('input[type=radio]:checked').forEach(r => {
+    document.querySelectorAll('input.radio-rubrica:checked').forEach(r => {
         total += parseFloat(r.dataset.puntaje || 0);
     });
     preview.textContent = total;
 }
 
-// Escuchar cambios en los radios
-radios.forEach(r => r.addEventListener('change', recalcular));
+function marcarNoVino() {
+    if (checkNoVino.checked) {
+        // Desmarcar todos los radios de la rúbrica
+        radiosRubrica.forEach(r => r.checked = false);
+        // Atenuar la rúbrica
+        rubricaDiv.style.opacity = '0.4';
+        rubricaDiv.style.pointerEvents = 'none';
+        recalcular();
+    }
+}
 
-// Calcular al cargar por si estamos editando una nota ya puesta
-window.addEventListener('DOMContentLoaded', recalcular);
+// Si el jurado toca la rúbrica, desmarcamos "No vino"
+radiosRubrica.forEach(r => {
+    r.addEventListener('change', () => {
+        if (checkNoVino.checked) {
+            checkNoVino.checked = false;
+            rubricaDiv.style.opacity = '1';
+            rubricaDiv.style.pointerEvents = 'auto';
+        }
+        recalcular();
+    });
+});
+
+checkNoVino.addEventListener('change', () => {
+    if (!checkNoVino.checked) {
+        rubricaDiv.style.opacity = '1';
+        rubricaDiv.style.pointerEvents = 'auto';
+    }
+    recalcular();
+});
+
+// Inicializar al cargar
+window.addEventListener('DOMContentLoaded', () => {
+    if (checkNoVino.checked) {
+        marcarNoVino();
+    } else {
+        recalcular();
+    }
+});
 </script>
 {% endblock %}
