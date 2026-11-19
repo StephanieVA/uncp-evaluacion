@@ -5,6 +5,7 @@
   <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
     <h2 style="margin:0;">Docentes registrados</h2>
     <div>
+      <a href="{{ url_for('importar_notas') }}" class="btn btn-secondary" style="background:#ca8a04; color:#fff;">📊 Importar Notas (Desempeño/Cuestionario)</a>
       <a href="{{ url_for('importar_docentes') }}" class="btn btn-success">📥 Importar Excel</a>
       <a href="{{ url_for('form_docente') }}" class="btn btn-primary">+ Nuevo docente</a>
     </div>
