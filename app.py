@@ -558,13 +558,13 @@ def resultados_excel():
         # Crear un diccionario para buscar rápido la nota de cada jurado
         notas_por_jurado = {c.jurado_id: c.nota_final for c in cals}
         
-         row = [
-            limpiar_texto_excel(p.area or ''),
-            limpiar_texto_excel(p.facultad or ''),
-            limpiar_texto_excel(p.autor.nombre if p.autor else '-'),
-            limpiar_texto_excel(p.nombre_bp),  # <- AQUÍ ESTÁ EL ERROR
-            limpiar_texto_excel(p.programa_estudio or '')
-        ]
+    row = [
+          limpiar_texto_excel(p.area or ''),
+          limpiar_texto_excel(p.facultad or ''),
+          limpiar_texto_excel(p.autor.nombre if p.autor else '-'),
+          limpiar_texto_excel(p.nombre_bp),  # <- AQUÍ ESTÁ EL ERROR
+          limpiar_texto_excel(p.programa_estudio or '')
+     ]
         
         # Agregar la nota de cada jurado según el orden de la lista de jurados
         suma_notas = 0
@@ -939,14 +939,14 @@ def exportar_evaluaciones():
 
     # --- HOJA 3: CONSOLIDADO FINAL ---
     ws3 = wb.create_sheet("Consolidado Final")
-            row = [
-            limpiar_texto_excel(p.area),
-            limpiar_texto_excel(p.facultad),
-            limpiar_texto_excel(doc.dni if doc else '-'),
-            limpiar_texto_excel(doc.nombre if doc else '-'),
-            limpiar_texto_excel(p.nombre_bp),  # <- AQUÍ ESTÁ EL OTRO ERROR
-            round(prom_jurados, 2), nota_des, nota_cue, round(prom_final, 2)
-        ]
+    row = [
+           limpiar_texto_excel(p.area),
+           limpiar_texto_excel(p.facultad),
+           limpiar_texto_excel(doc.dni if doc else '-'),
+           limpiar_texto_excel(doc.nombre if doc else '-'),
+           limpiar_texto_excel(p.nombre_bp),  # <- AQUÍ ESTÁ EL OTRO ERROR
+           round(prom_jurados, 2), nota_des, nota_cue, round(prom_final, 2)
+     ]
         ws3.append(row)
 
     # Llenar datos
