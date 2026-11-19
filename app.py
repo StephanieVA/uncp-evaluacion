@@ -993,6 +993,37 @@ def exportar_evaluaciones():
     output.seek(0)
     return send_file(output, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', as_attachment=True, download_name='Reporte_Consolidado.xlsx')
 
+@app.route('/exportar')
+def vista_exportar():
+    # Hacemos la misma lógica del cálculo de promedios para mostrarla en la web
+    resultados_por_area = {}
+    for p in Proyecto.query.all():
+        cals = Calificacion.query.filter_by(proyecto_id=p.id).all()
+        suma_notas = sum(c.nota_final for c in cals)
+        prom_jurados = (suma_notas / len(cals)) if cals else 0
+        porcentaje_jurados = (prom_jurados / 28) * 100 if prom_jurados else 0
+        
+        doc = p.autor
+        nota_des = doc.nota_desempeno if doc else 0
+        nota_cue = doc.nota_cuestionario if doc else 0
+        
+        prom_final = (porcentaje_jurados * 0.40) + (nota_des * 0.30) + (nota_cue * 0.30)
+        
+        area = p.area or 'SIN ÁREA'
+        if area not in resultados_por_area:
+            resultados_por_area[area] = []
+        
+        resultados_por_area[area].append({
+            'nombre': doc.nombre if doc else '-',
+            'promedio': round(prom_final, 2)
+        })
+    
+    # Ordenar y dejar solo los 3 primeros
+    for area in resultados_por_area:
+        resultados_por_area[area].sort(key=lambda x: x['promedio'], reverse=True)
+        
+    return render_template('exportar.html', resultados_por_area=resultados_por_area)
+
 # ============ INICIALIZACIÓN ============
 with app.app_context():
     db.create_all()
