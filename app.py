@@ -558,12 +558,12 @@ def resultados_excel():
         # Crear un diccionario para buscar rápido la nota de cada jurado
         notas_por_jurado = {c.jurado_id: c.nota_final for c in cals}
         
-        row = [
-            p.area or '',
-            p.facultad or '',
-            p.autor.nombre if p.autor else '-',
-            p.nombre_bp,
-            p.programa_estudio or ''
+         row = [
+            limpiar_texto_excel(p.area or ''),
+            limpiar_texto_excel(p.facultad or ''),
+            limpiar_texto_excel(p.autor.nombre if p.autor else '-'),
+            limpiar_texto_excel(p.nombre_bp),  # <- AQUÍ ESTÁ EL ERROR
+            limpiar_texto_excel(p.programa_estudio or '')
         ]
         
         # Agregar la nota de cada jurado según el orden de la lista de jurados
@@ -920,15 +920,34 @@ def exportar_evaluaciones():
     # --- HOJA 1: DESEMPEÑO DOCENTE ---
     ws1 = wb.active
     ws1.title = "Desempeño Docente"
-    ws1.append(["FACULTAD", "DNI", "DOCENTE", "PUNTAJE", "PERIODO"])
+     ws1.append([
+            limpiar_texto_excel(d.facultad or '-'), 
+            limpiar_texto_excel(d.dni), 
+            limpiar_texto_excel(d.nombre), 
+            f"{d.nota_desempeno}%" if d.nota_desempeno else "0%", 
+            limpiar_texto_excel(periodo_des)
+        ])
     
     # --- HOJA 2: CUESTIONARIO ---
     ws2 = wb.create_sheet("Cuestionario Docente")
-    ws2.append(["Código", "Apellidos y Nombres", "PF", "PERIODO"])
+            ws2.append([
+            limpiar_texto_excel(d.dni), 
+            limpiar_texto_excel(d.nombre), 
+            d.nota_cuestionario if d.nota_cuestionario else 0, 
+            limpiar_texto_excel(periodo_cues)
+        ])
 
     # --- HOJA 3: CONSOLIDADO FINAL ---
     ws3 = wb.create_sheet("Consolidado Final")
-    ws3.append(["Área", "Facultad", "DNI", "Docente", "Proyecto", "Nota Jurados (28)", "Desempeño (100)", "Cuestionario (100)", "Promedio Final (%)"])
+            row = [
+            limpiar_texto_excel(p.area),
+            limpiar_texto_excel(p.facultad),
+            limpiar_texto_excel(doc.dni if doc else '-'),
+            limpiar_texto_excel(doc.nombre if doc else '-'),
+            limpiar_texto_excel(p.nombre_bp),  # <- AQUÍ ESTÁ EL OTRO ERROR
+            round(prom_jurados, 2), nota_des, nota_cue, round(prom_final, 2)
+        ]
+        ws3.append(row)
 
     # Llenar datos
     docentes = Docente.query.all()
