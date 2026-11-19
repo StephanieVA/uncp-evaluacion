@@ -447,36 +447,40 @@ def calificar_jurado(proyecto_id, jurado_id):
     jurado = Jurado.query.get_or_404(jurado_id)
     criterios = Criterio.query.order_by(Criterio.orden).all()
     
-    # Buscar si ya existe una calificación de este jurado para este proyecto
     calificacion_existente = Calificacion.query.filter_by(proyecto_id=proyecto_id, jurado_id=jurado_id).first()
 
     if request.method == 'POST':
-        total = 0
-        detalles = []
+        # Verificar si se marcó la opción "No se presentó"
+        no_se_presento = request.form.get('no_se_presento')
         
-        for c in criterios:
-            nivel_id = request.form.get(f'criterio_{c.id}')
-            if not nivel_id:
-                flash(f'Falta seleccionar el criterio: {c.nombre}', 'danger')
-                return redirect(url_for('calificar_jurado', proyecto_id=proyecto_id, jurado_id=jurado_id))
-            
-            nivel = NivelCriterio.query.get(int(nivel_id))
-            total += nivel.puntaje
-            detalles.append((c.id, nivel.id, nivel.puntaje))
+        if no_se_presento:
+            total = 0
+            detalles = []
+            # No procesamos los criterios, la nota final es 0
+        else:
+            total = 0
+            detalles = []
+            for c in criterios:
+                nivel_id = request.form.get(f'criterio_{c.id}')
+                if not nivel_id:
+                    flash(f'Falta seleccionar el criterio: {c.nombre}', 'danger')
+                    return redirect(url_for('calificar_jurado', proyecto_id=proyecto_id, jurado_id=jurado_id))
+                
+                nivel = NivelCriterio.query.get(int(nivel_id))
+                total += nivel.puntaje
+                detalles.append((c.id, nivel.id, nivel.puntaje))
 
         if calificacion_existente:
-            # ACTUALIZAR SI YA EXISTE
             calificacion_existente.nota_final = total
             calificacion_existente.comentario = request.form.get('comentario', '')
             
-            # Borrar detalles viejos y crear nuevos
+            # Borrar detalles viejos y crear nuevos (si los hay)
             DetalleCalificacion.query.filter_by(calificacion_id=calificacion_existente.id).delete()
             for cid, nid, punt in detalles:
                 db.session.add(DetalleCalificacion(calificacion_id=calificacion_existente.id,
                                                    criterio_id=cid, nivel_id=nid, puntaje_obtenido=punt))
-            flash(f'Calificación actualizada correctamente. Total: {total} / 28 pts', 'success')
+            flash(f'Calificación actualizada. Total: {total} / 28 pts', 'success')
         else:
-            # CREAR NUEVA
             cal = Calificacion(proyecto_id=proyecto_id, jurado_id=jurado_id,
                                nota_final=total, comentario=request.form.get('comentario', ''))
             db.session.add(cal)
@@ -494,8 +498,7 @@ def calificar_jurado(proyecto_id, jurado_id):
                            jurado=jurado,
                            criterios=criterios,
                            calificacion=calificacion_existente)
-
-
+  
 # ============ RESULTADOS (Actualizado) ============
 @app.route('/resultados')
 def resultados():
