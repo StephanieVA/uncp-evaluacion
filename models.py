@@ -14,6 +14,8 @@ class Docente(db.Model):
     facultad = db.Column(db.String(150), nullable=False)
     area = db.Column(db.String(50))              # Se completa automáticamente desde la facultad
     correo = db.Column(db.String(100), unique=True)
+    nota_desempeno = db.Column(db.Float, default=0.0) # Puntaje del 1er reporte (0 a 100)
+    nota_cuestionario = db.Column(db.Float, default=0.0) # Puntaje del 2do reporte (PF)
 
     proyectos = db.relationship('Proyecto', backref='autor', lazy=True,
                                 cascade='all, delete-orphan')
