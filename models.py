@@ -99,3 +99,14 @@ class DetalleCalificacion(db.Model):
     criterio_id = db.Column(db.Integer, db.ForeignKey('criterio.id'), nullable=False)
     nivel_id = db.Column(db.Integer, db.ForeignKey('nivel_criterio.id'), nullable=False)
     puntaje_obtenido = db.Column(db.Float)
+
+class NotaPeriodo(db.Model):
+    __tablename__ = 'nota_periodo'
+    id = db.Column(db.Integer, primary_key=True)
+    docente_id = db.Column(db.Integer, db.ForeignKey('docente.id'), nullable=False)
+    tipo = db.Column(db.String(50), nullable=False) # 'desempeno' o 'cuestionario'
+    periodo = db.Column(db.String(20), nullable=False) # '2025-II', '2026-I', etc.
+    nota = db.Column(db.Float, default=0.0)
+
+    # Relación para acceder fácilmente desde el docente
+    docente = db.relationship('Docente', backref=db.backref('notas_periodos', lazy=True, cascade='all, delete-orphan'))
