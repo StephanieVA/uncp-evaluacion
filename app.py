@@ -517,9 +517,6 @@ def resultados():
 def resultados_excel():
     """Genera un Excel con los resultados consolidados y las notas de cada jurado."""
     proyectos = Proyecto.query.order_by(Proyecto.area, Proyecto.nombre_bp).all()
-    
-    # Obtener todos los jurados (asumimos un máximo de 4 para las columnas, o adaptamos dinámicamente)
-    # Para mantener el orden, los ordenamos por Día y Nombre
     todos_jurados = Jurado.query.order_by(Jurado.dia_asignado, Jurado.nombre).all()
     
     wb = Workbook()
@@ -529,11 +526,8 @@ def resultados_excel():
     # Encabezados
     headers = ["Área", "Facultad", "Docente", "Proyecto", "Programa"]
     for j in todos_jurados:
-        # Acortamos el nombre del jurado para el encabezado
         nombre_corto = j.nombre.split()[0] if j.nombre else 'Jurado'
-        headers.append(f"J{nombre_corto}")
-    headers.append("Promedio Final")
-
+        headers.append(f"J_{nombre_corto}")
     ws.append(headers)
 
     # Estilos
@@ -543,7 +537,6 @@ def resultados_excel():
     thin = Side(style='thin', color="CCCCCC")
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
 
-    # Aplicar estilos a la cabecera
     for cell in ws[1]:
         cell.fill = fill_header
         cell.font = font_header
@@ -553,20 +546,17 @@ def resultados_excel():
     current_area = None
 
     for p in proyectos:
-        # Obtener calificaciones de este proyecto
         cals = Calificacion.query.filter_by(proyecto_id=p.id).all()
-        # Crear un diccionario para buscar rápido la nota de cada jurado
         notas_por_jurado = {c.jurado_id: c.nota_final for c in cals}
         
-    row = [
-          limpiar_texto_excel(p.area or ''),
-          limpiar_texto_excel(p.facultad or ''),
-          limpiar_texto_excel(p.autor.nombre if p.autor else '-'),
-          limpiar_texto_excel(p.nombre_bp),  # <- AQUÍ ESTÁ EL ERROR
-          limpiar_texto_excel(p.programa_estudio or '')
-     ]
+        row = [
+            limpiar_texto_excel(p.area or ''),
+            limpiar_texto_excel(p.facultad or ''),
+            limpiar_texto_excel(p.autor.nombre if p.autor else '-'),
+            limpiar_texto_excel(p.nombre_bp),
+            limpiar_texto_excel(p.programa_estudio or '')
+        ]
         
-        # Agregar la nota de cada jurado según el orden de la lista de jurados
         suma_notas = 0
         for j in todos_jurados:
             nota = notas_por_jurado.get(j.id)
@@ -576,41 +566,28 @@ def resultados_excel():
             else:
                 row.append('-')
         
-        # Calcular promedio (solo sobre los jurados que calificaron)
-        promedio = round(suma_notas / len(cals), 2) if cals else '-'
-        row.append(promedio)
+        prom_jurados = round(suma_notas / len(cals), 2) if cals else 0
+        row.append(prom_jurados)
         
         ws.append(row)
         row_idx = ws.max_row
         
-        # Aplicar bordes y estilos a la fila
         for cell in ws[row_idx]:
             cell.border = border
-            cell.alignment = Alignment(vertical="center", wrap_text=True, horizontal="center" if cell.column > 4 else "left")
+            cell.alignment = Alignment(vertical="center", wrap_text=True, horizontal="center" if cell.column > 5 else "left")
         
-        # Colorear al cambiar de área
         if p.area != current_area:
             for cell in ws[row_idx]:
                 cell.fill = fill_area
             current_area = p.area
 
-    # Ajustar ancho de columnas
-    ws.column_dimensions['A'].width = 12
-    ws.column_dimensions['B'].width = 35
-    ws.column_dimensions['C'].width = 30
-    ws.column_dimensions['D'].width = 45
-    ws.column_dimensions['E'].width = 30
-    
-    # Ajustar ancho de columnas de jurados y promedio
-    total_cols = len(headers)
-    for col_idx in range(6, total_cols + 1):
-        # Convertir índice numérico a letra de columna (F, G, H...)
-        col_letter = ws.cell(row=1, column=col_idx).column_letter
-        ws.column_dimensions[col_letter].width = 12
+    # Ajustar ancho
+    for i in range(1, len(headers) + 1):
+        col_letter = ws.cell(row=1, column=i).column_letter
+        ws.column_dimensions[col_letter].width = 15
 
     ws.freeze_panes = "A2"
 
-    # Guardar en memoria
     output = io.BytesIO()
     wb.save(output)
     output.seek(0)
@@ -621,7 +598,7 @@ def resultados_excel():
         as_attachment=True,
         download_name='resultados_uncp.xlsx'
     )
-
+  
 # ============ IMPORTAR DOCENTES DESDE EXCEL ============
 import pandas as pd
 from werkzeug.utils import secure_filename
