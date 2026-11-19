@@ -897,66 +897,48 @@ def exportar_evaluaciones():
     # --- HOJA 1: DESEMPEÑO DOCENTE ---
     ws1 = wb.active
     ws1.title = "Desempeño Docente"
-    ws1.append([
-           limpiar_texto_excel(d.facultad or '-'), 
-           limpiar_texto_excel(d.dni), 
-           limpiar_texto_excel(d.nombre), 
-           f"{d.nota_desempeno}%" if d.nota_desempeno else "0%", 
-           limpiar_texto_excel(periodo_des)
-       ])
+    ws1.append(["FACULTAD", "DNI", "DOCENTE", "PUNTAJE", "PERIODO"])
     
     # --- HOJA 2: CUESTIONARIO ---
     ws2 = wb.create_sheet("Cuestionario Docente")
-    ws2.append([
+    ws2.append(["Código", "Apellidos y Nombres", "PF", "PERIODO"])
+
+    # --- HOJA 3: CONSOLIDADO FINAL ---
+    ws3 = wb.create_sheet("Consolidado Final")
+    ws3.append(["Área", "Facultad", "DNI", "Docente", "Proyecto", "Nota Jurados (28)", "Desempeño (100)", "Cuestionario (100)", "Promedio Final (%)"])
+
+    # Llenar datos de docentes
+    docentes = Docente.query.all()
+    for d in docentes:
+        ws1.append([
+            limpiar_texto_excel(d.facultad or '-'), 
+            limpiar_texto_excel(d.dni), 
+            limpiar_texto_excel(d.nombre), 
+            f"{d.nota_desempeno}%" if d.nota_desempeno else "0%", 
+            limpiar_texto_excel(periodo_des)
+        ])
+        ws2.append([
             limpiar_texto_excel(d.dni), 
             limpiar_texto_excel(d.nombre), 
             d.nota_cuestionario if d.nota_cuestionario else 0, 
             limpiar_texto_excel(periodo_cues)
-       ])
-
-    # --- HOJA 3: CONSOLIDADO FINAL ---
-    ws3 = wb.create_sheet("Consolidado Final")
-    row = [
-           limpiar_texto_excel(p.area),
-           limpiar_texto_excel(p.facultad),
-           limpiar_texto_excel(doc.dni if doc else '-'),
-           limpiar_texto_excel(doc.nombre if doc else '-'),
-           limpiar_texto_excel(p.nombre_bp),  # <- AQUÍ ESTÁ EL OTRO ERROR
-           round(prom_jurados, 2), nota_des, nota_cue, round(prom_final, 2)
-     ]
-        ws3.append(row)
-
-    # Llenar datos
-    docentes = Docente.query.all()
-    for d in docentes:
-        ws1.append([
-            d.facultad or '-', d.dni, d.nombre, 
-            f"{d.nota_desempeno}%" if d.nota_desempeno else "0%", 
-            periodo_des
-        ])
-        ws2.append([
-            d.dni, d.nombre, 
-            d.nota_cuestionario if d.nota_cuestionario else 0, 
-            periodo_cues
         ])
 
     # Lógica del Consolidado
     resultados_por_area = {}
-    for p in Proyecto.query.all():
+    proyectos = Proyecto.query.all()
+    
+    for p in proyectos:
         cals = Calificacion.query.filter_by(proyecto_id=p.id).all()
         suma_notas = sum(c.nota_final for c in cals)
         prom_jurados = (suma_notas / len(cals)) if cals else 0 # Sobre 28
         
-        # Convertir nota de jurados a porcentaje (0-100)
         porcentaje_jurados = (prom_jurados / 28) * 100 if prom_jurados else 0
         
-        # Obtener notas del docente
         doc = p.autor
         nota_des = doc.nota_desempeno if doc else 0
         nota_cue = doc.nota_cuestionario if doc else 0
         
-        # PROMEDIO FINAL (Aquí defines los porcentajes. Ejemplo: 40% Jurados, 30% Desempeño, 30% Cuestionario)
-        # Si deseas partes iguales (33.3% c/u), cambia los multiplicadores.
         peso_jurados = 0.40
         peso_desempeno = 0.30
         peso_cuestionario = 0.30
@@ -964,12 +946,16 @@ def exportar_evaluaciones():
         prom_final = (porcentaje_jurados * peso_jurados) + (nota_des * peso_desempeno) + (nota_cue * peso_cuestionario)
         
         row = [
-            p.area, p.facultad, doc.dni if doc else '-', doc.nombre if doc else '-', p.nombre_bp,
+            limpiar_texto_excel(p.area or ''),
+            limpiar_texto_excel(p.facultad or ''),
+            limpiar_texto_excel(doc.dni if doc else '-'),
+            limpiar_texto_excel(doc.nombre if doc else '-'),
+            limpiar_texto_excel(p.nombre_bp),
             round(prom_jurados, 2), nota_des, nota_cue, round(prom_final, 2)
         ]
+        
         ws3.append(row)
         
-        # Agrupar para sacar los 3 primeros
         area_key = p.area or 'SIN ÁREA'
         if area_key not in resultados_por_area:
             resultados_por_area[area_key] = []
@@ -988,6 +974,7 @@ def exportar_evaluaciones():
     wb.save(output)
     output.seek(0)
     return send_file(output, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', as_attachment=True, download_name='Reporte_Consolidado.xlsx')
+  
 
 @app.route('/exportar')
 def vista_exportar():
