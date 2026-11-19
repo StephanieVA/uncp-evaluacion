@@ -2,82 +2,82 @@
 {% block title %}Calificar: {{ proyecto.nombre_bp }}{% endblock %}
 {% block content %}
 <style>
-    .rubrica-tabla { width: 100%; border-collapse: collapse; background: #fff; font-size: 14px; }
-    .rubrica-tabla th, .rubrica-tabla td { border: 1px solid #ddd; padding: 12px; vertical-align: middle; }
-    .rubrica-tabla th { background: #1a3d7c; color: #fff; text-align: center; }
-    .rubrica-tabla td.criterio { background: #f0f4fa; font-weight: bold; width: 25%; }
-    .rubrica-tabla td.opcion { text-align: center; cursor: pointer; }
-    .rubrica-tabla td.opcion:hover { background: #e8f0fa; }
-    .rubrica-tabla input[type="radio"] { display: none; }
-    .rubrica-tabla input[type="radio"]:checked + label {
-        display: block; background: #d4edda; border: 2px solid #27ae60; color: #155724;
-        padding: 8px; border-radius: 6px; font-weight: bold; cursor: pointer;
+    /* Estilos para que se vea bien en celular y tablet */
+    .rubrica-container { display: flex; flex-direction: column; gap: 15px; }
+    .criterio-card { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    .criterio-titulo { font-weight: bold; color: #1a3d7c; margin-bottom: 10px; font-size: 16px; border-bottom: 2px solid #f0f0f0; padding-bottom: 5px; }
+    
+    .opciones { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (min-width: 768px) { .opciones { grid-template-columns: repeat(4, 1fr); } }
+    
+    .opcion-item input[type="radio"] { display: none; }
+    .opcion-item label {
+        display: block; padding: 12px; text-align: center; border: 2px solid #ccc; 
+        border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.2s;
+        height: 100%; box-sizing: border-box;
     }
-    .rubrica-tabla label { display: block; padding: 8px; border: 2px solid transparent; cursor: pointer; border-radius: 6px; }
-    .total-box { background: #1a3d7c; color: #fff; padding: 20px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
+    .opcion-item input[type="radio"]:checked + label {
+        background: #d4edda; border-color: #27ae60; color: #155724; font-weight: bold;
+        box-shadow: 0 0 8px rgba(39, 174, 96, 0.4);
+    }
+    .opcion-item label:hover { background: #f8f9fa; }
+    
+    .total-box { background: #1a3d7c; color: #fff; padding: 20px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; margin-top: 20px; flex-wrap: wrap; gap: 15px; }
 </style>
 
-<div class="card" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap;">
+<div class="card" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;">
   <div>
-    <h2 style="margin:0;">{{ proyecto.nombre_bp }}</h2>
-    <p style="margin:5px 0;"><strong>Docente:</strong> {{ proyecto.autor.nombre }}</p>
-    <p style="margin:5px 0;"><strong>Área:</strong> {{ proyecto.area }}</p>
+    <h2 style="margin:0; font-size:20px;">{{ proyecto.nombre_bp }}</h2>
+    <p style="margin:5px 0; font-size:14px;"><strong>Docente:</strong> {{ proyecto.autor.nombre }}</p>
+    <p style="margin:5px 0; font-size:14px;"><strong>Área:</strong> {{ proyecto.area }}</p>
   </div>
-  <div style="text-align:right;">
-    <p style="margin:0; color:#666;">Calificando como:</p>
-    <h3 style="margin:0; color:#1a3d7c;">{{ jurado.nombre }}</h3>
+  <div style="text-align:right; background:#f0f4fa; padding:10px 15px; border-radius:8px;">
+    <p style="margin:0; font-size:12px; color:#666;">Calificando como:</p>
+    <h3 style="margin:0; color:#1a3d7c; font-size:16px;">{{ jurado.nombre }}</h3>
   </div>
 </div>
 
 <form method="POST">
-  <div class="card" style="overflow-x: auto;">
-    <table class="rubrica-tabla">
-      <thead>
-        <tr>
-          <th>N°</th>
-          <th>Criterio</th>
-          <th>Excelente (4)</th>
-          <th>Bueno (3)</th>
-          <th>Regular (2)</th>
-          <th>Deficiente (1)</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for criterio in criterios %}
-        <tr>
-          <td style="text-align:center; font-weight:bold;">{{ loop.index }}</td>
-          <td class="criterio">{{ criterio.nombre }}</td>
-          
-          {% for nivel in criterio.niveles %}
-          <td class="opcion" onclick="document.getElementById('radio_{{ criterio.id }}_{{ nivel.id }}').click();">
-            <input type="radio" name="criterio_{{ criterio.id }}" id="radio_{{ criterio.id }}_{{ nivel.id }}"
-                   value="{{ nivel.id }}" data-puntaje="{{ nivel.puntaje }}" required
-                   {% if calificacion %}{% for det in calificacion.detalles %}{% if det.criterio_id == criterio.id and det.nivel_id == nivel.id %}checked{% endif %}{% endfor %}{% endif %}>
-            <label for="radio_{{ criterio.id }}_{{ nivel.id }}">
-              {{ nivel.descripcion }}
-            </label>
-          </td>
-          {% endfor %}
-        </tr>
+  <div class="rubrica-container">
+    {% for criterio in criterios %}
+    <div class="criterio-card">
+      <div class="criterio-titulo">{{ loop.index }}. {{ criterio.nombre }}</div>
+      
+      <div class="opciones">
+        {% for nivel in criterio.niveles %}
+        <div class="opcion-item">
+          <input type="radio" name="criterio_{{ criterio.id }}" id="radio_{{ criterio.id }}_{{ nivel.id }}"
+                 value="{{ nivel.id }}" data-puntaje="{{ nivel.puntaje }}" required
+                 {% if calificacion %}{% for det in calificacion.detalles %}{% if det.criterio_id == criterio.id and det.nivel_id == nivel.id %}checked{% endif %}{% endfor %}{% endif %}>
+          <label for="radio_{{ criterio.id }}_{{ nivel.id }}">
+            <div style="font-weight:bold; font-size:14px; margin-bottom:4px;">{{ nivel.etiqueta }} ({{ nivel.puntaje }})</div>
+            <div style="font-size:11px; color:#555; line-height:1.2;">{{ nivel.descripcion }}</div>
+          </label>
+        </div>
         {% endfor %}
-      </tbody>
-    </table>
+      </div>
+    </div>
+    {% else %}
+    <div class="card" style="text-align:center; color:red;">
+      <p>Error: No hay criterios cargados en la base de datos. Ejecuta <code>seed.py</code>.</p>
+    </div>
+    {% endfor %}
 
-    <div class="form-group" style="margin-top: 20px;">
-      <label>Comentario (Opcional)</label>
-      <textarea name="comentario" rows="2" style="width:100%; border:1px solid #ccc; border-radius:6px; padding:8px;">{{ calificacion.comentario if calificacion else '' }}</textarea>
+    <div class="card">
+      <label style="font-weight:bold; color:#1a3d7c;">Comentario u observación (Opcional)</label>
+      <textarea name="comentario" rows="2" style="width:100%; border:1px solid #ccc; border-radius:6px; padding:10px; margin-top:5px;">{{ calificacion.comentario if calificacion else '' }}</textarea>
     </div>
   </div>
 
   <div class="total-box">
     <div>
-      <div style="font-size:14px;">Puntaje Total</div>
-      <span id="notaPreview" style="font-size:32px; font-weight:bold;">0</span> <span style="font-size:16px;">/ 28 pts</span>
+      <div style="font-size:14px; opacity:0.9;">Puntaje Total</div>
+      <div><span id="notaPreview" style="font-size:36px; font-weight:bold;">0</span> <span style="font-size:16px;">/ 28 pts</span></div>
     </div>
     <div style="display:flex; gap:10px;">
       <a href="{{ url_for('jurado_proyectos', jurado_id=jurado.id) }}" class="btn btn-secondary" style="padding:14px 28px;">Cancelar</a>
       <button type="submit" class="btn btn-success" style="padding:14px 28px; font-size:16px;">
-        {{ 'Actualizar' if calificacion else 'Guardar Calificación' }}
+        {{ 'Actualizar' if calificacion else 'Guardar' }}
       </button>
     </div>
   </div>
@@ -86,14 +86,20 @@
 <script>
 const radios = document.querySelectorAll('input[type=radio]');
 const preview = document.getElementById('notaPreview');
+
 function recalcular() {
     let total = 0;
+    // Sumar los puntos de todos los radio buttons seleccionados
     document.querySelectorAll('input[type=radio]:checked').forEach(r => {
         total += parseFloat(r.dataset.puntaje || 0);
     });
     preview.textContent = total;
 }
+
+// Escuchar cambios en los radios
 radios.forEach(r => r.addEventListener('change', recalcular));
+
+// Calcular al cargar por si estamos editando una nota ya puesta
 window.addEventListener('DOMContentLoaded', recalcular);
 </script>
 {% endblock %}
