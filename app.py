@@ -1008,23 +1008,24 @@ def vista_exportar():
         
     return render_template('exportar.html', resultados_por_area=resultados_por_area)
 
+from models import db, Docente, Proyecto, Jurado, Criterio, NivelCriterio, Calificacion, DetalleCalificacion, NotaPeriodo
+
 @app.route('/docentes/importar_notas', methods=['GET', 'POST'])
 def importar_notas():
     if request.method == 'POST':
         archivo = request.files.get('archivo')
         tipo_nota = request.form.get('tipo_nota') # 'desempeno' o 'cuestionario'
+        periodo = request.form.get('periodo')     # '2025-II' o '2026-I'
         
         if not archivo or archivo.filename == '':
             flash('Debes seleccionar un archivo Excel.', 'danger')
             return redirect(url_for('importar_notas'))
 
         try:
-            # Leer el Excel usando openpyxl (para no depender de pandas)
             wb = load_workbook(archivo, data_only=True)
             ws = wb.active
             headers = [cell.value for cell in ws[1]]
             
-            # Identificar columnas (DNI y la Nota)
             idx_dni = None
             idx_nota = None
             
@@ -1035,18 +1036,17 @@ def importar_notas():
                     idx_nota = i
             
             if idx_dni is None or idx_nota is None:
-                flash('El Excel debe tener una columna "DNI" (o Código) y una columna "Nota" (o PF).', 'danger')
+                flash('El Excel debe tener una columna "DNI" y una columna "Nota" (o PF).', 'danger')
                 return redirect(url_for('importar_notas'))
 
             actualizados = 0
             no_encontrados = 0
             
-            # Recorrer filas
             for row in ws.iter_rows(min_row=2, values_only=True):
                 if not row or row[idx_dni] is None:
                     continue
                     
-                dni = str(row[idx_dni]).strip().replace('.0', '') # Limpiar decimales de Excel
+                dni = str(row[idx_dni]).strip().replace('.0', '')
                 nota_val = row[idx_nota]
                 
                 if nota_val is None:
@@ -1055,21 +1055,34 @@ def importar_notas():
                 try:
                     nota = float(nota_val)
                 except:
-                    continue # Si no es un número, saltar
+                    continue
 
-                # Buscar al docente por DNI
                 docente = Docente.query.filter_by(dni=dni).first()
                 if docente:
-                    if tipo_nota == 'desempeno':
-                        docente.nota_desempeno = nota
+                    # Buscar si ya existe una nota para este docente, tipo y periodo
+                    nota_existente = NotaPeriodo.query.filter_by(
+                        docente_id=docente.id, 
+                        tipo=tipo_nota, 
+                        periodo=periodo
+                    ).first()
+                    
+                    if nota_existente:
+                        nota_existente.nota = nota
                     else:
-                        docente.nota_cuestionario = nota
+                        nueva_nota = NotaPeriodo(
+                            docente_id=docente.id,
+                            tipo=tipo_nota,
+                            periodo=periodo,
+                            nota=nota
+                        )
+                        db.session.add(nueva_nota)
+                    
                     actualizados += 1
                 else:
                     no_encontrados += 1
 
             db.session.commit()
-            flash(f'Importación exitosa: {actualizados} notas actualizadas. ({no_encontrados} DNI no encontrados)', 'success')
+            flash(f'Importación exitosa ({periodo} - {tipo_nota}): {actualizados} notas guardadas. ({no_encontrados} DNI no encontrados)', 'success')
             return redirect(url_for('lista_docentes'))
 
         except Exception as e:
@@ -1077,7 +1090,6 @@ def importar_notas():
             return redirect(url_for('importar_notas'))
 
     return render_template('docentes/importar_notas.html')
-
 # ============ INICIALIZACIÓN ============
 with app.app_context():
     db.create_all()
