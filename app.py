@@ -897,13 +897,13 @@ def exportar_evaluaciones():
     # --- HOJA 1: DESEMPEÑO DOCENTE ---
     ws1 = wb.active
     ws1.title = "Desempeño Docente"
-     ws1.append([
-            limpiar_texto_excel(d.facultad or '-'), 
-            limpiar_texto_excel(d.dni), 
-            limpiar_texto_excel(d.nombre), 
-            f"{d.nota_desempeno}%" if d.nota_desempeno else "0%", 
-            limpiar_texto_excel(periodo_des)
-        ])
+    ws1.append([
+           limpiar_texto_excel(d.facultad or '-'), 
+           limpiar_texto_excel(d.dni), 
+           limpiar_texto_excel(d.nombre), 
+           f"{d.nota_desempeno}%" if d.nota_desempeno else "0%", 
+           limpiar_texto_excel(periodo_des)
+       ])
     
     # --- HOJA 2: CUESTIONARIO ---
     ws2 = wb.create_sheet("Cuestionario Docente")
