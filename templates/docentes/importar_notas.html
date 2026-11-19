@@ -2,31 +2,39 @@
 {% block title %}Importar Notas Masivas{% endblock %}
 {% block content %}
 <div class="card">
-  <h2>Importar Notas (Desempeño o Cuestionario)</h2>
-  <p>Sube el Excel que te entregó la oficina. El sistema buscará a cada docente por su <strong>DNI</strong> y actualizará su nota.</p>
+  <h2>Importar Notas de Historial</h2>
+  <p>Sube el Excel. El sistema guardará la nota para el periodo seleccionado sin borrar los datos de otros periodos.</p>
   
   <div style="background:#fff3cd; padding:15px; border-left:4px solid #ffc107; margin-bottom:20px;">
-    <strong>Estructura requerida del Excel:</strong><br>
-    El archivo debe tener una columna llamada <strong>DNI</strong> (o Código) y otra llamada <strong>Nota</strong> (o PF / Puntaje).<br>
-    <em>Ejemplo:</em> | DNI | Nombre | Nota |<br>
-             | 19888618 | PEREZ, JUAN | 85.5 |
+    <strong>Estructura requerida:</strong> El archivo debe tener una columna <strong>DNI</strong> (o Código) y una columna <strong>Nota</strong> (o PF).
   </div>
 
   <form method="POST" enctype="multipart/form-data">
-    <div class="form-group" style="background:#f0f4fa; padding:15px; border-radius:8px;">
-      <label style="font-weight:bold; color:#1a3d7c;">¿Qué nota estás subiendo?</label>
-      <div style="margin-top:10px;">
-        <label style="margin-right:20px; cursor:pointer;">
-          <input type="radio" name="tipo_nota" value="desempeno" required> Nota de Desempeño Docente (Reporte 1)
-        </label>
-        <label style="cursor:pointer;">
-          <input type="radio" name="tipo_nota" value="cuestionario" required> Nota de Cuestionario (Reporte 2)
-        </label>
+    
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+      <div class="form-group" style="background:#f0f4fa; padding:15px; border-radius:8px;">
+        <label style="font-weight:bold; color:#1a3d7c;">1. ¿Qué tipo de nota es?</label>
+        <div style="margin-top:10px;">
+          <label style="display:block; margin-bottom:5px; cursor:pointer;">
+            <input type="radio" name="tipo_nota" value="desempeno" required> Desempeño Docente
+          </label>
+          <label style="display:block; cursor:pointer;">
+            <input type="radio" name="tipo_nota" value="cuestionario" required> Cuestionario
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group" style="background:#f0f4fa; padding:15px; border-radius:8px;">
+        <label style="font-weight:bold; color:#1a3d7c;">2. ¿A qué periodo pertenece?</label>
+        <select name="periodo" required style="width:100%; padding:8px; margin-top:10px; border-radius:6px; border:1px solid #ccc;">
+          <option value="2025-II">2025-II</option>
+          <option value="2026-I">2026-I</option>
+        </select>
       </div>
     </div>
 
     <div class="form-group" style="margin-top:20px;">
-      <label>Archivo Excel (.xlsx)</label>
+      <label>3. Archivo Excel (.xlsx)</label>
       <input type="file" name="archivo" accept=".xlsx, .xls" required style="padding:10px; border:1px solid #ccc; border-radius:6px; width:100%;">
     </div>
 
