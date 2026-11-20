@@ -6,79 +6,56 @@
   <a href="{{ url_for('resultados_excel') }}" class="btn btn-success">📥 Descargar Resultados (Excel)</a>
 </div>
 
-<div class="card">
-  <table>
+<div class="card" style="overflow-x: auto;">
+  <table style="font-size:13px; white-space:nowrap;">
     <thead>
-      <tr>
-        <th>Proyecto / Docente</th>
+      <tr style="background:#1a3d7c; color:#fff;">
         <th>Área</th>
-        <th>Jurados (0-100%)</th>
-        <th>Desempeño</th>
-        <th>Cuestionario</th>
-        <th>Promedio Final</th>
-        <th>Nivel</th>
-        <th>Detalle</th>
+        <th>Facultad</th>
+        <th>DNI</th>
+        <th>Docente</th>
+        {% for j in jurados %}
+          <th title="{{ j.nombre }}">J{{ loop.index }}</th>
+        {% endfor %}
+        <th>Expo (%)</th>
+        
+        {% for per in periodos %}
+          <th>CU {{ per }}</th>
+        {% endfor %}
+        
+        {% for per in periodos %}
+          <th>DE {{ per }}</th>
+        {% endfor %}
+        
+        <th style="background:#ca8a04;">Promedio Final</th>
       </tr>
     </thead>
     <tbody>
     {% for row in data %}
       <tr>
-        <td>
-          <strong>{{ row.proyecto.nombre_bp }}</strong><br>
-          <small style="color:#666;">{{ row.proyecto.autor.nombre }}</small>
-        </td>
         <td>{{ row.proyecto.area }}</td>
-        <td>
-          <strong>{{ row.calculos.porcentaje_jurados }}%</strong><br>
-          <small style="color:#888;">({{ row.calculos.prom_jurados }} pts)</small>
-        </td>
-        <td>{{ row.calculos.nota_des }}%</td>
-        <td>{{ row.calculos.nota_cue }}%</td>
-        <td style="font-size:18px; color:#1a3d7c;"><strong>{{ row.calculos.prom_final }}%</strong></td>
-        <td>
-          {% if row.calculos.nivel == 'Bueno' %}
-            <span style="background:#d4edda; color:#155724; padding:4px 8px; border-radius:4px; font-weight:bold;">Bueno</span>
-          {% elif row.calculos.nivel == 'Regular' %}
-            <span style="background:#fff3cd; color:#856404; padding:4px 8px; border-radius:4px; font-weight:bold;">Regular</span>
-          {% elif row.calculos.nivel == 'Bajo' %}
-            <span style="background:#ffeeba; color:#8a6d3b; padding:4px 8px; border-radius:4px; font-weight:bold;">Bajo</span>
-          {% else %}
-            <span style="background:#f8d7da; color:#721c24; padding:4px 8px; border-radius:4px; font-weight:bold;">Deficiente</span>
-          {% endif %}
-        </td>
-        <td>
-          <button onclick="document.getElementById('detalle-{{ row.proyecto.id }}').style.display = document.getElementById('detalle-{{ row.proyecto.id }}').style.display === 'none' ? 'table-row' : 'none';" class="btn btn-secondary" style="padding:4px 8px; font-size:12px;">Ver notas</button>
-        </td>
-      </tr>
-      
-      <!-- Fila oculta con el detalle de los jurados -->
-      <tr id="detalle-{{ row.proyecto.id }}" style="display:none; background:#fafafa;">
-        <td colspan="8">
-          <table style="width:100%; font-size:13px;">
-            <thead>
-              <tr style="background:#eee;">
-                <th>Jurado</th>
-                <th>Puntaje (0-28)</th>
-                <th>Comentario</th>
-                <th>Acción</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for c in row.calificaciones %}
-              <tr>
-                <td>{{ c.jurado.nombre }}</td>
-                <td><strong>{{ c.nota_final }}</strong> / 28</td>
-                <td><small style="color:#666;">{{ c.comentario or 'Sin comentario' }}</small></td>
-                <td>
-                  <a href="{{ url_for('calificar_jurado', proyecto_id=row.proyecto.id, jurado_id=c.jurado.id) }}" class="btn btn-secondary" style="padding:2px 8px; font-size:12px;">Editar</a>
-                </td>
-              </tr>
-              {% else %}
-              <tr><td colspan="4" style="text-align:center; color:#999;">Sin calificaciones aún</td></tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </td>
+        <td>{{ row.proyecto.facultad }}</td>
+        <td>{{ row.proyecto.autor.dni if row.proyecto.autor else '-' }}</td>
+        <td>{{ row.proyecto.autor.nombre if row.proyecto.autor else '-' }}</td>
+        
+        <!-- Notas de Jurados -->
+        {% for j in jurados %}
+          <td>{{ row.calificaciones.get(j.id, '-') }}</td>
+        {% endfor %}
+        
+        <td><strong>{{ row.calculos.porcentaje_expo }}</strong></td>
+        
+        <!-- Notas de Cuestionario -->
+        {% for per in periodos %}
+          <td>{{ row.calculos.notas_cuestionario.get(per, '-') }}</td>
+        {% endfor %}
+        
+        <!-- Notas de Desempeño -->
+        {% for per in periodos %}
+          <td>{{ row.calculos.notas_desempeno.get(per, '-') }}</td>
+        {% endfor %}
+        
+        <td style="font-size:16px; color:#1a3d7c; background:#f0f4fa;"><strong>{{ row.calculos.prom_final }}</strong></td>
       </tr>
     {% endfor %}
     </tbody>
