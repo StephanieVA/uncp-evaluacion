@@ -595,27 +595,33 @@ def resultados():
 @app.route('/resultados/excel')
 def resultados_excel():
     proyectos = Proyecto.query.order_by(Proyecto.area, Proyecto.nombre_bp).all()
-    todos_jurados = Jurado.query.order_by(Jurado.dia_asignado, Jurado.nombre).all()
+    todos_jurados = Jurado.query.order_by(Jurado.id).all()
+    periodos_db = db.session.query(NotaPeriodo.periodo).distinct().order_by(NotaPeriodo.periodo).all()
+    periodos = [p[0] for p in periodos_db]
     
     wb = Workbook()
     ws = wb.active
     ws.title = "Resultados Consolidados"
 
-    # Encabezados
-    headers = ["Área", "Facultad", "Docente", "Proyecto", "Programa"]
-    for j in todos_jurados:
-        nombre_corto = j.nombre.split()[0] if j.nombre else 'Jurado'
-        headers.append(f"J_{nombre_corto} (28)")
+    # Encabezados dinámicos
+    headers = ["Área", "Facultad", "DNI", "Docente"]
+    for i, j in enumerate(todos_jurados):
+        headers.append(f"J{i+1}")
+    headers.append("Expo (%)")
     
-    headers.extend(["Prom. Jurados (%)", "Desempeño (%)", "Cuestionario (%)", "PROMEDIO FINAL (%)", "NIVEL"])
+    for per in periodos:
+        headers.append(f"CU {per}")
+    for per in periodos:
+        headers.append(f"DE {per}")
+        
+    headers.append("PROMEDIO FINAL")
     ws.append(headers)
 
     # Estilos
     fill_header = PatternFill(start_color="1A3D7C", end_color="1A3D7C", fill_type="solid")
     font_header = Font(bold=True, color="FFFFFF")
-    fill_area = PatternFill(start_color="E8F0FA", end_color="E8F0FA", fill_type="solid")
-    thin = Side(style='thin', color="CCCCCC")
-    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    border = Border(left=Side(style='thin', color="CCCCCC"), right=Side(style='thin', color="CCCCCC"), 
+                    top=Side(style='thin', color="CCCCCC"), bottom=Side(style='thin', color="CCCCCC"))
 
     for cell in ws[1]:
         cell.fill = fill_header
@@ -623,64 +629,66 @@ def resultados_excel():
         cell.alignment = Alignment(horizontal="center", vertical="center")
         cell.border = border
 
-    current_area = None
-
     for p in proyectos:
-        # Usamos la función que calcula todo
         calcs = calcular_promedio_final(p)
+        # Calificaciones de jurados
         cals = Calificacion.query.filter_by(proyecto_id=p.id).all()
         notas_por_jurado = {c.jurado_id: c.nota_final for c in cals}
         
         row = [
             limpiar_texto_excel(p.area or ''),
             limpiar_texto_excel(p.facultad or ''),
-            limpiar_texto_excel(p.autor.nombre if p.autor else '-'),
-            limpiar_texto_excel(p.nombre_bp),
-            limpiar_texto_excel(p.programa_estudio or '')
+            limpiar_texto_excel(p.autor.dni if p.autor else '-'),
+            limpiar_texto_excel(p.autor.nombre if p.autor else '-')
         ]
         
-        # Notas individuales de jurados
+        # Agregar notas de jurados
         for j in todos_jurados:
             nota = notas_por_jurado.get(j.id)
             row.append(nota if nota is not None else '-')
+            
+        # Agregar Expo
+        row.append(calcs['porcentaje_expo'])
         
-        # Agregar los cálculos
-        row.append(calcs['porcentaje_jurados'])
-        row.append(calcs['nota_des'])
-        row.append(calcs['nota_cue'])
+        # Agregar Cuestionarios
+        for per in periodos:
+            row.append(calcs['notas_cuestionario'].get(per, '-'))
+            
+        # Agregar Desempeños
+        for per in periodos:
+            row.append(calcs['notas_desempeno'].get(per, '-'))
+            
+        # Agregar Promedio Final
         row.append(calcs['prom_final'])
-        row.append(calcs['nivel'])
         
         ws.append(row)
         row_idx = ws.max_row
         
         for cell in ws[row_idx]:
             cell.border = border
-            cell.alignment = Alignment(vertical="center", wrap_text=True, horizontal="center" if cell.column > 5 else "left")
-        
-        if p.area != current_area:
-            for cell in ws[row_idx]:
-                cell.fill = fill_area
-            current_area = p.area
+            cell.alignment = Alignment(vertical="center", wrap_text=True, horizontal="center" if cell.column > 4 else "left")
 
-    # Ajustar ancho
-    for i in range(1, len(headers) + 1):
-        col_letter = ws.cell(row=1, column=i).column_letter
-        ws.column_dimensions[col_letter].width = 15
+    # Ajustar ancho de columnas automáticamente
+    for col in ws.columns:
+        max_length = 0
+        column = col[0].column_letter
+        for cell in col:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = (max_length + 2)
+        ws.column_dimensions[column].width = adjusted_width
 
-    ws.freeze_panes = "A2"
+    ws.freeze_panes = "E2" # Congela las primeras 4 columnas
 
     output = io.BytesIO()
     wb.save(output)
     output.seek(0)
+    return send_file(output, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', as_attachment=True, download_name='resultados_consolidados.xlsx')
 
-    return send_file(
-        output,
-        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        as_attachment=True,
-        download_name='resultados_consolidados.xlsx'
-    )
-  
+
 # ============ IMPORTAR DOCENTES DESDE EXCEL ============
 import pandas as pd
 from werkzeug.utils import secure_filename
