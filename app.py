@@ -23,7 +23,44 @@ app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
+def calcular_promedio_final(proyecto):
+    # 1. Nota de jurados (sobre 28) a porcentaje
+    cals = Calificacion.query.filter_by(proyecto_id=proyecto.id).all()
+    if cals:
+        suma_notas = sum(c.nota_final for c in cals)
+        prom_jurados = suma_notas / len(cals)
+        porcentaje_jurados = (prom_jurados / 28) * 100
+    else:
+        prom_jurados = 0
+        porcentaje_jurados = 0
 
+    # 2. Notas de desempeño y cuestionario (0 a 100)
+    # Nota: Asumimos que las notas ya están guardadas en el docente (nota_desempeno y nota_cuestionario)
+    doc = proyecto.autor
+    nota_des = doc.nota_desempeno if doc and doc.nota_desempeno else 0
+    nota_cue = doc.nota_cuestionario if doc and doc.nota_cuestionario else 0
+
+    # 3. Promedio final (Ejemplo: 40% Jurados, 30% Desempeño, 30% Cuestionario)
+    # Puedes ajustar los pesos aquí si lo necesitas.
+    prom_final = (porcentaje_jurados * 0.40) + (nota_des * 0.30) + (nota_cue * 0.30)
+
+    # 4. Determinar Nivel (Según tu imagen)
+    nivel = "Deficiente"
+    if prom_final >= 81:
+        nivel = "Bueno"
+    elif prom_final >= 61:
+        nivel = "Regular"
+    elif prom_final >= 41:
+        nivel = "Bajo"
+
+    return {
+        'prom_jurados': round(prom_jurados, 2),
+        'porcentaje_jurados': round(porcentaje_jurados, 2),
+        'nota_des': nota_des,
+        'nota_cue': nota_cue,
+        'prom_final': round(prom_final, 2),
+        'nivel': nivel
+    }
 @app.context_processor
 def inject_helpers():
     from catalogos import area_desde_facultad, lista_areas
@@ -503,18 +540,17 @@ def calificar_jurado(proyecto_id, jurado_id):
 @app.route('/resultados')
 def resultados():
     data = []
-    # Proyectos ordenados por promedio descendente
     for p in Proyecto.query.order_by(Proyecto.area, Proyecto.nombre_bp).all():
-        cals = Calificacion.query.filter_by(proyecto_id=p.id).all()
-        # Calcular promedio sobre 28
-        promedio = round(sum(c.nota_final for c in cals) / len(cals), 2) if cals else None
+        calculos = calcular_promedio_final(p)
         data.append({
             'proyecto': p,
-            'calificaciones': cals,
-            'promedio': promedio,
-            'completo': len(cals) == 4
+            'calificaciones': Calificacion.query.filter_by(proyecto_id=p.id).all(),
+            'calculos': calculos,
+            'completo': len(Calificacion.query.filter_by(proyecto_id=p.id).all()) == 4
         })
-    data.sort(key=lambda x: (x['promedio'] is None, -(x['promedio'] or 0)))
+    
+    # Ordenar por el promedio final de mayor a menor
+    data.sort(key=lambda x: x['calculos']['prom_final'], reverse=True)
     return render_template('resultados.html', data=data)
 
 @app.route('/resultados/excel')
@@ -981,30 +1017,22 @@ def exportar_evaluaciones():
     return send_file(output, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', as_attachment=True, download_name='Reporte_Consolidado.xlsx')
 @app.route('/exportar')
 def vista_exportar():
-    # Hacemos la misma lógica del cálculo de promedios para mostrarla en la web
     resultados_por_area = {}
     for p in Proyecto.query.all():
-        cals = Calificacion.query.filter_by(proyecto_id=p.id).all()
-        suma_notas = sum(c.nota_final for c in cals)
-        prom_jurados = (suma_notas / len(cals)) if cals else 0
-        porcentaje_jurados = (prom_jurados / 28) * 100 if prom_jurados else 0
-        
-        doc = p.autor
-        nota_des = doc.nota_desempeno if doc else 0
-        nota_cue = doc.nota_cuestionario if doc else 0
-        
-        prom_final = (porcentaje_jurados * 0.40) + (nota_des * 0.30) + (nota_cue * 0.30)
-        
+        calculos = calcular_promedio_final(p)
         area = p.area or 'SIN ÁREA'
+        
         if area not in resultados_por_area:
             resultados_por_area[area] = []
-        
+            
         resultados_por_area[area].append({
-            'nombre': doc.nombre if doc else '-',
-            'promedio': round(prom_final, 2)
+            'nombre': p.autor.nombre if p.autor else '-',
+            'proyecto': p.nombre_bp,
+            'promedio': calculos['prom_final'],
+            'nivel': calculos['nivel']
         })
     
-    # Ordenar y dejar solo los 3 primeros
+    # Ordenar cada área por promedio (de mayor a menor)
     for area in resultados_por_area:
         resultados_por_area[area].sort(key=lambda x: x['promedio'], reverse=True)
         
