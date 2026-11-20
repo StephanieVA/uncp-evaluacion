@@ -6,13 +6,11 @@ from openpyxl import load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from flask import (Flask, render_template, request, redirect,
                    url_for, flash, abort)
-from models import (db, Docente, Proyecto, Jurado, Criterio,
-                    NivelCriterio, Calificacion, DetalleCalificacion)
-
 from catalogos import (FACULTADES, lista_areas, lista_facultades,
                        lista_programas, area_desde_facultad,
                        facultad_desde_codigo)
-
+from models import (db, Docente, Proyecto, Jurado, Criterio, 
+                    NivelCriterio, Calificacion, DetalleCalificacion, NotaPeriodo)
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'clave-uncp-2026')
 
@@ -34,14 +32,23 @@ def calcular_promedio_final(proyecto):
         prom_jurados = 0
         porcentaje_jurados = 0
 
-    # 2. Notas de desempeño y cuestionario (0 a 100)
-    # Nota: Asumimos que las notas ya están guardadas en el docente (nota_desempeno y nota_cuestionario)
+    # 2. Notas de desempeño y cuestionario desde el HISTORIAL (NotaPeriodo)
     doc = proyecto.autor
-    nota_des = doc.nota_desempeno if doc and doc.nota_desempeno else 0
-    nota_cue = doc.nota_cuestionario if doc and doc.nota_cuestionario else 0
+    nota_des = 0
+    nota_cue = 0
+    
+    if doc:
+        # Buscar todas las notas de Desempeño del docente y promediarlas
+        notas_des_obj = NotaPeriodo.query.filter_by(docente_id=doc.id, tipo='desempeno').all()
+        if notas_des_obj:
+            nota_des = sum(n.nota for n in notas_des_obj) / len(notas_des_obj)
+            
+        # Buscar todas las notas de Cuestionario del docente y promediarlas
+        notas_cue_obj = NotaPeriodo.query.filter_by(docente_id=doc.id, tipo='cuestionario').all()
+        if notas_cue_obj:
+            nota_cue = sum(n.nota for n in notas_cue_obj) / len(notas_cue_obj)
 
-    # 3. Promedio final (Ejemplo: 40% Jurados, 30% Desempeño, 30% Cuestionario)
-    # Puedes ajustar los pesos aquí si lo necesitas.
+    # 3. Promedio final (40% Jurados, 30% Desempeño, 30% Cuestionario)
     prom_final = (porcentaje_jurados * 0.40) + (nota_des * 0.30) + (nota_cue * 0.30)
 
     # 4. Determinar Nivel (Según tu imagen)
@@ -56,8 +63,8 @@ def calcular_promedio_final(proyecto):
     return {
         'prom_jurados': round(prom_jurados, 2),
         'porcentaje_jurados': round(porcentaje_jurados, 2),
-        'nota_des': nota_des,
-        'nota_cue': nota_cue,
+        'nota_des': round(nota_des, 2),
+        'nota_cue': round(nota_cue, 2),
         'prom_final': round(prom_final, 2),
         'nivel': nivel
     }
