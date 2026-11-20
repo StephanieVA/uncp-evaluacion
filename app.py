@@ -22,34 +22,57 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
 def calcular_promedio_final(proyecto):
-    # 1. Nota de jurados (sobre 28) a porcentaje
+    # 1. Obtener calificaciones de los jurados
     cals = Calificacion.query.filter_by(proyecto_id=proyecto.id).all()
-    if cals:
-        suma_notas = sum(c.nota_final for c in cals)
-        prom_jurados = suma_notas / len(cals)
-        porcentaje_jurados = (prom_jurados / 28) * 100
+    
+    # Extraer solo las notas válidas (> 0)
+    notas_jurados_validas = [c.nota_final for c in cals if c.nota_final > 0]
+    
+    if notas_jurados_validas:
+        # Sumamos las notas (sobre 28) y sacamos el promedio
+        prom_jurados_raw = sum(notas_jurados_validas) / len(notas_jurados_validas)
+        # Lo pasamos a porcentaje (sobre 100)
+        porcentaje_expo = (prom_jurados_raw / 28) * 100
     else:
-        prom_jurados = 0
-        porcentaje_jurados = 0
+        prom_jurados_raw = 0
+        porcentaje_expo = 0
 
-    # 2. Notas de desempeño y cuestionario desde el HISTORIAL (NotaPeriodo)
+    # 2. Obtener notas de la nueva tabla de historial (por periodo)
     doc = proyecto.autor
-    nota_des = 0
-    nota_cue = 0
+    notas_cuestionario = {}
+    notas_desempeno = {}
     
     if doc:
-        # Buscar todas las notas de Desempeño del docente y promediarlas
-        notas_des_obj = NotaPeriodo.query.filter_by(docente_id=doc.id, tipo='desempeno').all()
-        if notas_des_obj:
-            nota_des = sum(n.nota for n in notas_des_obj) / len(notas_des_obj)
+        # Buscar notas de cuestionario
+        for n in NotaPeriodo.query.filter_by(docente_id=doc.id, tipo='cuestionario').all():
+            notas_cuestionario[n.periodo] = n.nota
             
-        # Buscar todas las notas de Cuestionario del docente y promediarlas
-        notas_cue_obj = NotaPeriodo.query.filter_by(docente_id=doc.id, tipo='cuestionario').all()
-        if notas_cue_obj:
-            nota_cue = sum(n.nota for n in notas_cue_obj) / len(notas_cue_obj)
+        # Buscar notas de desempeño
+        for n in NotaPeriodo.query.filter_by(docente_id=doc.id, tipo='desempeno').all():
+            notas_desempeno[n.periodo] = n.nota
 
-    # 3. Promedio final (40% Jurados, 30% Desempeño, 30% Cuestionario)
-    prom_final = (porcentaje_jurados * 0.40) + (nota_des * 0.30) + (nota_cue * 0.30)
+    # 3. Calcular el Promedio Final (solo con las notas que existan)
+    valores_para_promediar = []
+    
+    # Agregar la expo (si es mayor a 0)
+    if porcentaje_expo > 0:
+        valores_para_promediar.append(porcentaje_expo)
+        
+    # Agregar notas de cuestionario
+    for nota in notas_cuestionario.values():
+        if nota > 0:
+            valores_para_promediar.append(nota)
+            
+    # Agregar notas de desempeño
+    for nota in notas_desempeno.values():
+        if nota > 0:
+            valores_para_promediar.append(nota)
+
+    # Sacar el promedio simple de todos los ítems que tengan nota
+    if valores_para_promediar:
+        prom_final = sum(valores_para_promediar) / len(valores_para_promediar)
+    else:
+        prom_final = 0
 
     # 4. Determinar Nivel (Según tu imagen)
     nivel = "Deficiente"
@@ -61,13 +84,14 @@ def calcular_promedio_final(proyecto):
         nivel = "Bajo"
 
     return {
-        'prom_jurados': round(prom_jurados, 2),
-        'porcentaje_jurados': round(porcentaje_jurados, 2),
-        'nota_des': round(nota_des, 2),
-        'nota_cue': round(nota_cue, 2),
+        'prom_jurados': round(prom_jurados_raw, 2),
+        'porcentaje_expo': round(porcentaje_expo, 2),
+        'notas_cuestionario': notas_cuestionario,
+        'notas_desempeno': notas_desempeno,
         'prom_final': round(prom_final, 2),
         'nivel': nivel
     }
+  
 @app.context_processor
 def inject_helpers():
     from catalogos import area_desde_facultad, lista_areas
@@ -547,18 +571,26 @@ def calificar_jurado(proyecto_id, jurado_id):
 @app.route('/resultados')
 def resultados():
     data = []
+    todos_jurados = Jurado.query.order_by(Jurado.id).all()
+    
+    # Buscar todos los periodos únicos que existen en la base de datos
+    periodos_db = db.session.query(NotaPeriodo.periodo).distinct().order_by(NotaPeriodo.periodo).all()
+    periodos = [p[0] for p in periodos_db]
+    
     for p in Proyecto.query.order_by(Proyecto.area, Proyecto.nombre_bp).all():
         calculos = calcular_promedio_final(p)
+        # Crear un diccionario de calificaciones por jurado para buscarlas fácil
+        cals_dict = {c.jurado_id: c.nota_final for c in Calificacion.query.filter_by(proyecto_id=p.id).all()}
+        
         data.append({
             'proyecto': p,
-            'calificaciones': Calificacion.query.filter_by(proyecto_id=p.id).all(),
-            'calculos': calculos,
-            'completo': len(Calificacion.query.filter_by(proyecto_id=p.id).all()) == 4
+            'calificaciones': cals_dict,
+            'calculos': calculos
         })
     
-    # Ordenar por el promedio final de mayor a menor
     data.sort(key=lambda x: x['calculos']['prom_final'], reverse=True)
-    return render_template('resultados.html', data=data)
+    return render_template('resultados.html', data=data, jurados=todos_jurados, periodos=periodos)
+  
 
 @app.route('/resultados/excel')
 def resultados_excel():
