@@ -555,19 +555,20 @@ def resultados():
 
 @app.route('/resultados/excel')
 def resultados_excel():
-    """Genera un Excel con los resultados consolidados y las notas de cada jurado."""
     proyectos = Proyecto.query.order_by(Proyecto.area, Proyecto.nombre_bp).all()
     todos_jurados = Jurado.query.order_by(Jurado.dia_asignado, Jurado.nombre).all()
     
     wb = Workbook()
     ws = wb.active
-    ws.title = "Resultados Finales"
+    ws.title = "Resultados Consolidados"
 
     # Encabezados
     headers = ["Área", "Facultad", "Docente", "Proyecto", "Programa"]
     for j in todos_jurados:
         nombre_corto = j.nombre.split()[0] if j.nombre else 'Jurado'
-        headers.append(f"J_{nombre_corto}")
+        headers.append(f"J_{nombre_corto} (28)")
+    
+    headers.extend(["Prom. Jurados (%)", "Desempeño (%)", "Cuestionario (%)", "PROMEDIO FINAL (%)", "NIVEL"])
     ws.append(headers)
 
     # Estilos
@@ -586,6 +587,8 @@ def resultados_excel():
     current_area = None
 
     for p in proyectos:
+        # Usamos la función que calcula todo
+        calcs = calcular_promedio_final(p)
         cals = Calificacion.query.filter_by(proyecto_id=p.id).all()
         notas_por_jurado = {c.jurado_id: c.nota_final for c in cals}
         
@@ -597,17 +600,17 @@ def resultados_excel():
             limpiar_texto_excel(p.programa_estudio or '')
         ]
         
-        suma_notas = 0
+        # Notas individuales de jurados
         for j in todos_jurados:
             nota = notas_por_jurado.get(j.id)
-            if nota is not None:
-                row.append(nota)
-                suma_notas += nota
-            else:
-                row.append('-')
+            row.append(nota if nota is not None else '-')
         
-        prom_jurados = round(suma_notas / len(cals), 2) if cals else 0
-        row.append(prom_jurados)
+        # Agregar los cálculos
+        row.append(calcs['porcentaje_jurados'])
+        row.append(calcs['nota_des'])
+        row.append(calcs['nota_cue'])
+        row.append(calcs['prom_final'])
+        row.append(calcs['nivel'])
         
         ws.append(row)
         row_idx = ws.max_row
@@ -636,7 +639,7 @@ def resultados_excel():
         output,
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         as_attachment=True,
-        download_name='resultados_uncp.xlsx'
+        download_name='resultados_consolidados.xlsx'
     )
   
 # ============ IMPORTAR DOCENTES DESDE EXCEL ============
