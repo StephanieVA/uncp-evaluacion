@@ -1,19 +1,23 @@
 {% extends "base.html" %}
 {% block title %}Resultados{% endblock %}
 {% block content %}
-<div class="card">
-  <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
-  <h2 style="margin:0;">Resultados Consolidados (Máximo 28 pts)</h2>
+<div class="card" style="display:flex; justify-content:space-between; align-items:center;">
+  <h2 style="margin:0;">Resultados Consolidados</h2>
   <a href="{{ url_for('resultados_excel') }}" class="btn btn-success">📥 Descargar Resultados (Excel)</a>
 </div>
+
+<div class="card">
   <table>
     <thead>
       <tr>
         <th>Proyecto / Docente</th>
         <th>Área</th>
-        <th>Jurados</th>
-        <th>Puntaje Final</th>
-        <th>Detalle y Edición</th>
+        <th>Jurados (0-100%)</th>
+        <th>Desempeño</th>
+        <th>Cuestionario</th>
+        <th>Promedio Final</th>
+        <th>Nivel</th>
+        <th>Detalle</th>
       </tr>
     </thead>
     <tbody>
@@ -25,28 +29,36 @@
         </td>
         <td>{{ row.proyecto.area }}</td>
         <td>
-          {{ row.calificaciones|length }}/4 
-          {% if row.completo %}<span style="color:#27ae60;">✅</span>{% endif %}
+          <strong>{{ row.calculos.porcentaje_jurados }}%</strong><br>
+          <small style="color:#888;">({{ row.calculos.prom_jurados }} pts)</small>
         </td>
+        <td>{{ row.calculos.nota_des }}%</td>
+        <td>{{ row.calculos.nota_cue }}%</td>
+        <td style="font-size:18px; color:#1a3d7c;"><strong>{{ row.calculos.prom_final }}%</strong></td>
         <td>
-          {% if row.promedio is not none %}
-            <strong style="font-size:16px; color:#1a3d7c;">{{ row.promedio }}</strong> / 28
+          {% if row.calculos.nivel == 'Bueno' %}
+            <span style="background:#d4edda; color:#155724; padding:4px 8px; border-radius:4px; font-weight:bold;">Bueno</span>
+          {% elif row.calculos.nivel == 'Regular' %}
+            <span style="background:#fff3cd; color:#856404; padding:4px 8px; border-radius:4px; font-weight:bold;">Regular</span>
+          {% elif row.calculos.nivel == 'Bajo' %}
+            <span style="background:#ffeeba; color:#8a6d3b; padding:4px 8px; border-radius:4px; font-weight:bold;">Bajo</span>
           {% else %}
-            -
+            <span style="background:#f8d7da; color:#721c24; padding:4px 8px; border-radius:4px; font-weight:bold;">Deficiente</span>
           {% endif %}
         </td>
         <td>
           <button onclick="document.getElementById('detalle-{{ row.proyecto.id }}').style.display = document.getElementById('detalle-{{ row.proyecto.id }}').style.display === 'none' ? 'table-row' : 'none';" class="btn btn-secondary" style="padding:4px 8px; font-size:12px;">Ver notas</button>
         </td>
       </tr>
+      
       <!-- Fila oculta con el detalle de los jurados -->
       <tr id="detalle-{{ row.proyecto.id }}" style="display:none; background:#fafafa;">
-        <td colspan="5">
+        <td colspan="8">
           <table style="width:100%; font-size:13px;">
             <thead>
               <tr style="background:#eee;">
                 <th>Jurado</th>
-                <th>Puntaje</th>
+                <th>Puntaje (0-28)</th>
                 <th>Comentario</th>
                 <th>Acción</th>
               </tr>
