@@ -1094,6 +1094,9 @@ def importar_notas():
                     
                 try:
                     nota = float(nota_val)
+                    # Si la nota viene en formato decimal (ej. 0.875 o 1.0), la pasamos a porcentaje (87.5 o 100)
+                    if nota <= 1.0:
+                        nota = nota * 100
                 except:
                     continue
 
