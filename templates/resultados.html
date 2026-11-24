@@ -14,8 +14,16 @@
         <th>Facultad</th>
         <th>DNI</th>
         <th>Docente</th>
-        {% for j in jurados %}
-          <th title="{{ j.nombre }}">J{{ loop.index }}</th>
+      {% for j in jurados %}
+          <!-- Mostramos el nombre corto en la tabla web -->
+          <th title="{{ j.nombre }}">
+            {% set partes = j.nombre.split() %}
+            {% if partes|length >= 2 %}
+              {{ partes[0] }} {{ partes[1] }}
+            {% else %}
+              {{ j.nombre }}
+            {% endif %}
+          </th>
         {% endfor %}
         <th>Expo (%)</th>
         
