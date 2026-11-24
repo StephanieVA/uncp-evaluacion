@@ -591,7 +591,6 @@ def resultados():
     data.sort(key=lambda x: x['calculos']['prom_final'], reverse=True)
     return render_template('resultados.html', data=data, jurados=todos_jurados, periodos=periodos)
   
-
 @app.route('/resultados/excel')
 def resultados_excel():
     proyectos = Proyecto.query.order_by(Proyecto.area, Proyecto.nombre_bp).all()
@@ -603,10 +602,18 @@ def resultados_excel():
     ws = wb.active
     ws.title = "Resultados Consolidados"
 
-    # Encabezados dinámicos
+    # Encabezados dinámicos (AQUÍ ESTÁ EL CAMBIO)
     headers = ["Área", "Facultad", "DNI", "Docente"]
-    for i, j in enumerate(todos_jurados):
-        headers.append(f"J{i+1}")
+    for j in todos_jurados:
+        # Extraer solo el primer y segundo nombre/apellido para no hacer la columna gigante
+        partes_nombre = j.nombre.split()
+        if len(partes_nombre) >= 2:
+            # Tomamos el primer apellido y el primer nombre (ej. "AQUINO PALACIOS")
+            nombre_corto = f"{partes_nombre[0]} {partes_nombre[1]}"
+        else:
+            nombre_corto = j.nombre
+        headers.append(nombre_corto) # <--- Usamos el nombre en lugar de J1, J2...
+        
     headers.append("Expo (%)")
     
     for per in periodos:
@@ -626,12 +633,11 @@ def resultados_excel():
     for cell in ws[1]:
         cell.fill = fill_header
         cell.font = font_header
-        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
         cell.border = border
 
     for p in proyectos:
         calcs = calcular_promedio_final(p)
-        # Calificaciones de jurados
         cals = Calificacion.query.filter_by(proyecto_id=p.id).all()
         notas_por_jurado = {c.jurado_id: c.nota_final for c in cals}
         
@@ -647,18 +653,14 @@ def resultados_excel():
             nota = notas_por_jurado.get(j.id)
             row.append(nota if nota is not None else '-')
             
-        # Agregar Expo
         row.append(calcs['porcentaje_expo'])
         
-        # Agregar Cuestionarios
         for per in periodos:
             row.append(calcs['notas_cuestionario'].get(per, '-'))
             
-        # Agregar Desempeños
         for per in periodos:
             row.append(calcs['notas_desempeno'].get(per, '-'))
             
-        # Agregar Promedio Final
         row.append(calcs['prom_final'])
         
         ws.append(row)
@@ -687,8 +689,6 @@ def resultados_excel():
     wb.save(output)
     output.seek(0)
     return send_file(output, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', as_attachment=True, download_name='resultados_consolidados.xlsx')
-
-
 # ============ IMPORTAR DOCENTES DESDE EXCEL ============
 import pandas as pd
 from werkzeug.utils import secure_filename
